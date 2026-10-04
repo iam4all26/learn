@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
+import '../services/api_client.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({Key? key}) : super(key: key);
@@ -23,11 +24,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _initializeWebView() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('user_id');
-
-    // Create the magic auto-login URL
-    final authUrl = 'https://academy.kainuwa.africa/api/mobile/webview_auth.php?user_id=$userId&redirect=/courses';
+    // Secure auto-login link from the server (one-time, 60 seconds). If it cannot be created the
+    // normal website opens and the visitor simply signs in on the page.
+    final authUrl = await ApiClient.webviewUrl('/courses') ?? 'https://academy.kainuwa.africa/courses';
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)

@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
+import '../services/api_client.dart';
 import '../widgets/kaida_loader.dart';
 import '../utils/kaida_alert.dart';
 import 'catalog_screen.dart';
@@ -195,7 +196,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> with SingleTicker
     }
   }
 
-  void _handlePrimaryAction() {
+  Future<void> _handlePrimaryAction() async {
     if (_userId == null) {
       KaidaAlert.showModal(context: context, title: 'Authentication Required', message: 'Please log in first.', isError: true);
       return;
@@ -208,8 +209,13 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> with SingleTicker
           ? '/api/mobile/buy_now.php?product_id=${widget.item.id}' 
           : '/enroll.php?course_id=${widget.item.id}';
           
-      String encodedRedirect = Uri.encodeComponent(targetPath);
-      String authBridgeUrl = 'https://academy.kainuwa.africa/api/mobile/webview_auth.php?user_id=$_userId&redirect=$encodedRedirect';
+      // Secure one-time sign-in link from the server
+      final String? authBridgeUrl = await ApiClient.webviewUrl(targetPath);
+      if (!mounted) return;
+      if (authBridgeUrl == null) {
+        KaidaAlert.showModal(context: context, title: 'Could not open', message: 'We could not open the checkout right now. Please check your internet and try again.', isError: true);
+        return;
+      }
 
       Navigator.push(context, MaterialPageRoute(builder: (context) => CheckoutWebViewScreen(
         title: isProduct ? 'Checkout' : 'Enroll Course',

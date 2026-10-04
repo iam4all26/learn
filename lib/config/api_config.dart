@@ -26,4 +26,14 @@ class ApiConfig {
   static const String updateProfile = '$baseUrl/update_profile.php';
   static const String categories = '$baseUrl/categories.php';
   static const String getInstructor = '$baseUrl/get_instructor.php';
+
+  // NEW: secure login system
+  static const String webviewTicket = '$baseUrl/webview_ticket.php';
+  static const String logout = '$baseUrl/logout.php';
+
+  // Google "Web client ID" (looks like 1234567890-abcdef.apps.googleusercontent.com).
+  // Find it in Firebase Console -> Authentication -> Sign-in method -> Google -> Web SDK configuration,
+  // or Google Cloud Console -> APIs & Services -> Credentials -> "Web client (auto created by Google Service)".
+  // PASTE IT BETWEEN THE QUOTES. While it is empty, Google sign-in only works while the server is in legacy mode.
+  static const String googleWebClientId = '678276904298-qupbes3rsk9kk7a5q3s90gd4kdrc7koc.apps.googleusercontent.com';
 }

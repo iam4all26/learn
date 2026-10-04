@@ -1,7 +1,7 @@
 name: kainuwa_academy
 description: Kainuwa Digital Africa LMS Mobile App
 publish_to: 'none'
-version: 3.0.1+14
+version: 3.0.2+15
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

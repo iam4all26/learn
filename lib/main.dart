@@ -1,13 +1,20 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config/app_theme.dart';
 import 'config/theme_provider.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/api_client.dart';
 
-void main() async {
+void main() {
+  // Every http.get / http.post in the app now sends the login token automatically
+  http.runWithClient(() => _startApp(), () => KaidaHttpClient());
+}
+
+Future<void> _startApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +49,7 @@ class KaidaApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Kainuwa Academy',
       debugShowCheckedModeBanner: false,
       themeMode: themeProvider.themeMode, 

@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/api_config.dart';
+import '../services/api_client.dart';
 import '../config/app_theme.dart';
 import '../config/theme_provider.dart';
 import '../widgets/kaida_loader.dart';
@@ -130,6 +131,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Share.share("$_shareMessage \n\n$_shareUrl");
   }
 
+  // Opens a page of the website in the app already signed in (secure one-time link from the server)
+  Future<void> _openWebDashboard(String title, String path) async {
+    final url = await ApiClient.webviewUrl(path);
+    if (!mounted) return;
+    if (url == null) {
+      KaidaAlert.showModal(context: context, title: 'Could not open', message: 'We could not open this page right now. Please check your internet and try again.', isError: true);
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => WebViewScreen(title: title, url: url)));
+  }
+
   void _handleLogout() async {
     showDialog(
       context: context,
@@ -145,6 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
+              await ApiClient.logoutOnServer();   // the server stops accepting this device's login
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
               if (!mounted) return;
@@ -273,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
                     child: Text('ADMINISTRATOR', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
-                  _buildOptionTile(icon: Icons.admin_panel_settings_rounded, title: 'Admin Dashboard', isDark: isDark, onTap: () { Navigator.push(context, MaterialPageRoute(builder: (_) => WebViewScreen(title: 'Admin Dashboard', url: 'https://academy.kainuwa.africa/api/mobile/webview_auth.php?user_id=$_userId&redirect=%2Fswitch_view.php%3Fview%3Dadmin'))); }),
+                  _buildOptionTile(icon: Icons.admin_panel_settings_rounded, title: 'Admin Dashboard', isDark: isDark, onTap: () => _openWebDashboard('Admin Dashboard', '/switch_view.php?view=admin')),
                   const SizedBox(height: 10),
                 ],
 
@@ -282,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
                     child: Text('INSTRUCTOR', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
-                  _buildOptionTile(icon: Icons.dashboard_customize_rounded, title: 'Instructor Dashboard', isDark: isDark, onTap: () { Navigator.push(context, MaterialPageRoute(builder: (_) => WebViewScreen(title: 'Instructor Dashboard', url: 'https://academy.kainuwa.africa/api/mobile/webview_auth.php?user_id=$_userId&redirect=%2Fswitch_view.php%3Fview%3Dinstructor'))); }),
+                  _buildOptionTile(icon: Icons.dashboard_customize_rounded, title: 'Instructor Dashboard', isDark: isDark, onTap: () => _openWebDashboard('Instructor Dashboard', '/switch_view.php?view=instructor')),
                   const SizedBox(height: 10),
                 ],
 
@@ -291,7 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
                     child: Text('AFFILIATE', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
-                  _buildOptionTile(icon: Icons.campaign_rounded, title: 'Affiliate Dashboard', isDark: isDark, onTap: () { Navigator.push(context, MaterialPageRoute(builder: (_) => WebViewScreen(title: 'Affiliate Dashboard', url: 'https://academy.kainuwa.africa/api/mobile/webview_auth.php?user_id=$_userId&redirect=%2Fswitch_view.php%3Fview%3Daffiliate'))); }),
+                  _buildOptionTile(icon: Icons.campaign_rounded, title: 'Affiliate Dashboard', isDark: isDark, onTap: () => _openWebDashboard('Affiliate Dashboard', '/switch_view.php?view=affiliate')),
                   const SizedBox(height: 10),
                 ],
 
