@@ -1,7 +1,7 @@
 name: kainuwa_academy
 description: Kainuwa Digital Africa LMS Mobile App
 publish_to: 'none'
-version: 3.0.2+15
+version: 3.0.3+16
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -27,6 +27,7 @@ dependencies:
   firebase_core: ^2.24.2
   firebase_messaging: ^14.7.10
   google_sign_in: ^6.2.1
+  package_info_plus: ^8.1.0
 
 dev_dependencies:
   flutter_test:

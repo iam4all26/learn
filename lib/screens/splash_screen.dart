@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
@@ -16,7 +17,10 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  static const String CURRENT_APP_VERSION = "1.0.0";
+  // FIX: the version used to be typed here as "1.0.0", so EVERY installed copy of the app (even 3.0.2) thought it was
+  // 1.0.0 and showed "Update Required" as soon as latest_app_version on the server was higher than 1.0.0.
+  // Now the real installed version is read from the app itself (the "version:" line in pubspec.yaml).
+  String _installedVersion = '';
 
   @override
   void initState() {
@@ -26,6 +30,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeApp() async {
     try {
+      final info = await PackageInfo.fromPlatform();
+      _installedVersion = info.version;   // e.g. "3.0.3" (the part before the + in pubspec.yaml)
+    } catch (e) {
+      debugPrint("Could not read the app version: $e");
+    }
+
+    try {
       final response = await http.get(Uri.parse(ApiConfig.appSettings)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -34,7 +45,8 @@ class _SplashScreenState extends State<SplashScreen> {
           bool forceUpdate = data['data']['force_update'] == '1';
           String updateUrl = data['data']['share_url'] ?? "https://play.google.com/store/apps/details?id=com.kainuwa.academy";
 
-          if (_isUpdateRequired(CURRENT_APP_VERSION, latestVersion)) {
+          // If the installed version could not be read, never block the user with an update message
+          if (_installedVersion.isNotEmpty && _isUpdateRequired(_installedVersion, latestVersion)) {
             _showUpdateDialog(forceUpdate, updateUrl);
             return;
           }
@@ -49,10 +61,20 @@ class _SplashScreenState extends State<SplashScreen> {
     _routeUser();
   }
 
+  // True only when the server's latest version is HIGHER than the installed one.
+  // Works with "3.0.3", "3.1" and "4" (missing parts count as 0).
   bool _isUpdateRequired(String current, String latest) {
     try {
-      List<int> currParts = current.split('.').map(int.parse).toList();
-      List<int> latestParts = latest.split('.').map(int.parse).toList();
+      List<int> parse(String v) {
+        final parts = v.trim().split('.').map((p) => int.tryParse(p.trim()) ?? 0).toList();
+        while (parts.length < 3) {
+          parts.add(0);
+        }
+        return parts;
+      }
+
+      final currParts = parse(current);
+      final latestParts = parse(latest);
       for (int i = 0; i < 3; i++) {
         if (latestParts[i] > currParts[i]) return true;
         if (latestParts[i] < currParts[i]) return false;
