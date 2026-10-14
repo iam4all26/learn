@@ -154,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     if (!_agreeTerms) {
-      KaidaAlert.showModal(context: context, title: 'Terms Required', message: 'You must agree to the Terms & Conditions to create an account.', isError: true);
+      KaidaAlert.showModal(context: context, title: 'Terms Required', message: 'Please confirm that you are at least 16 years old and agree to the Terms & Conditions to create an account.', isError: true);
       return;
     }
     
@@ -366,7 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     SizedBox(height: 24, width: 24, child: Checkbox(value: _agreeTerms, activeColor: AppTheme.primaryColor, onChanged: (val) => setState(() => _agreeTerms = val ?? false))),
                     const SizedBox(width: 12),
-                    Expanded(child: Text('I agree to the Terms & Conditions', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade300 : Colors.black87))),
+                    Expanded(child: Text('I am at least 16 years old and I agree to the Terms & Conditions', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade300 : Colors.black87))),
                   ],
                 ),
                 const SizedBox(height: 30),
