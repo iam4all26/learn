@@ -24,6 +24,8 @@ class CatalogItem {
   final String productType;
   final bool isComingSoon;
   final bool isOutOfStock; // CRITICAL FIX 2: Inventory Tracking
+  final int lessonCount;
+  final double avgRating;
 
   CatalogItem({
     required this.id,
@@ -40,6 +42,8 @@ class CatalogItem {
     required this.productType,
     this.isComingSoon = false,
     this.isOutOfStock = false,
+    this.lessonCount = 0,
+    this.avgRating = 0,
   });
 
   factory CatalogItem.fromJson(Map<String, dynamic> json, String itemType) {
@@ -76,6 +80,8 @@ class CatalogItem {
       productType: pType,
       isComingSoon: comingSoon,
       isOutOfStock: outOfStock,
+      lessonCount: int.tryParse(json['lesson_count']?.toString() ?? '') ?? 0,
+      avgRating: double.tryParse(json['avg_rating']?.toString() ?? '') ?? 0,
     );
   }
 }

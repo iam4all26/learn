@@ -17,6 +17,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   bool _isLoading = true;
   List<dynamic> _categories = [];
 
+  static const List<Color> _tileColors = [
+    Color(0xFF7351FF), Color(0xFFFFB020), Color(0xFFEF4444), Color(0xFF2F80ED),
+    Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEC4899), Color(0xFF06B6D4),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -37,25 +42,26 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     } catch (e) {
       debugPrint("Categories Fetch Error: $e");
     } finally {
-      // FIX: Ensure the loading spinner always stops, regardless of success or error
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
-  // Assigns a native Flutter icon based on the category name
   IconData _getIconForCategory(String name) {
-    final lowerName = name.toLowerCase();
-    if (lowerName.contains('design')) return Icons.brush_rounded;
-    if (lowerName.contains('code') || lowerName.contains('development') || lowerName.contains('tech')) return Icons.code_rounded;
-    if (lowerName.contains('business') || lowerName.contains('finance')) return Icons.business_center_rounded;
-    if (lowerName.contains('market')) return Icons.campaign_rounded;
-    if (lowerName.contains('photo') || lowerName.contains('video')) return Icons.camera_alt_rounded;
-    if (lowerName.contains('health')) return Icons.favorite_rounded;
-    if (lowerName.contains('music') || lowerName.contains('audio')) return Icons.music_note_rounded;
-    if (lowerName.contains('language')) return Icons.language_rounded;
-    return Icons.category_rounded; // Default fallback
+    final n = name.toLowerCase();
+    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
+    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
+    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
+    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
+    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
+    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
+    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
+    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
+    if (n.contains('health')) return Icons.favorite_rounded;
+    if (n.contains('music') || n.contains('audio')) return Icons.music_note_rounded;
+    if (n.contains('language') || n.contains('english') || n.contains('hausa')) return Icons.translate_rounded;
+    return Icons.category_rounded;
   }
 
   @override
@@ -77,29 +83,52 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ? const Center(child: KaidaLoader())
           : _categories.isEmpty
               ? Center(child: Text("No categories found.", style: TextStyle(color: Colors.grey.shade500)))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(20),
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.92,
+                  ),
                   itemCount: _categories.length,
-                  separatorBuilder: (_, __) => Divider(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
-                    final catName = cat['name'] ?? 'Category';
-                    
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-                        child: Icon(_getIconForCategory(catName), color: AppTheme.primaryColor),
-                      ),
-                      title: Text(catName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                    final catName = (cat['name'] ?? 'Category').toString();
+                    final color = _tileColors[index % _tileColors.length];
+
+                    return GestureDetector(
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(
-                          actionType: 'category_${cat['id']}', 
-                          title: catName
+                          actionType: 'category_${cat['id']}',
+                          title: catName,
                         )));
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(isDark ? 0.18 : 0.10),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: color.withOpacity(0.25)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 52, height: 52,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 5))],
+                              ),
+                              child: Icon(_getIconForCategory(catName), color: Colors.white, size: 26),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(catName, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, height: 1.2)),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 ),

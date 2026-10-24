@@ -302,17 +302,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 else ...[
                   _buildCourseHorizontalList('Featured Courses', _getSubList(_activeCourses, 0, 4), isDark),
                   const SizedBox(height: 24),
-                  
-                  if (_instructors.isNotEmpty) _buildInstructorsRow(isDark)
-                  else _buildFallbackInstructorsRow(isDark), 
-
-                  const SizedBox(height: 24),
                   _buildCourseHorizontalList('Popular Now', _getSubList(_activeCourses, 2, 4), isDark),
                   
                   if (_comingSoonCourses.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     _buildCourseHorizontalList('Coming Soon', _comingSoonCourses, isDark, isComingSoon: true),
                   ],
+
+                  const SizedBox(height: 24),
+                  if (_instructors.isNotEmpty) _buildInstructorsRow(isDark)
+                  else _buildFallbackInstructorsRow(isDark),
                 ],
               ],
             ),
@@ -812,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 260, 
+          height: 290, 
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -916,7 +915,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(child: Text(item.instructorName, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  if (!isComingSoon && item.type == 'courses' && (item.lessonCount > 0 || item.avgRating > 0)) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (item.lessonCount > 0) ...[
+                          Icon(Icons.play_lesson_rounded, size: 14, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Text('${item.lessonCount} Lessons', style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600)),
+                        ],
+                        const Spacer(),
+                        if (item.avgRating > 0) ...[
+                          const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB020)),
+                          const SizedBox(width: 2),
+                          Text(item.avgRating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        ],
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 10),
                   if (isComingSoon)
                     const Text('COMING SOON', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13))
                   else if (item.isOutOfStock)
