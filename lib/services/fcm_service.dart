@@ -91,14 +91,14 @@ class FcmService {
           navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => ItemDetailsScreen(item: dummyItem)));
         } else {
             // Failsafe: If crucial data is missing (e.g., slug), route to the notifications center
-            navigatorKey.currentState!.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 3)), (route) => false);
+            navigatorKey.currentState!.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 5)), (route) => false);
         }
         break;
         
       case 'open_dashboard':
         // Handle action to open the learner dashboard tab (index 3)
         navigatorKey.currentState!.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 3)),
+          MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 5)),
           (Route<dynamic> route) => false, 
         );
         break;

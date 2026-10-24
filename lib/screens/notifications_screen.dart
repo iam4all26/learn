@@ -132,7 +132,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         Navigator.push(context, MaterialPageRoute(builder: (_) => ItemDetailsScreen(item: dummy)));
       }
     } else if (actionType == 'open_dashboard') {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout(initialIndex: 3)), (route) => false);
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout(initialIndex: 5)), (route) => false);
     } else if (actionType == 'open_store') {
       final url = Uri.parse("market://details?id=com.kainuwa.academy"); 
       if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);

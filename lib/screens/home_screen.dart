@@ -275,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
       body: SafeArea(
+        top: false,
         child: RefreshIndicator(
           color: AppTheme.primaryColor,
           onRefresh: () async {
@@ -290,12 +291,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTopHeader(isDark),
-                
-                if (_banners.isNotEmpty) _buildBannerCarousel(),
-
-                if (_categories.isNotEmpty) _buildCategoriesRow(isDark)
-                else _buildFallbackCategoriesRow(isDark), 
+                _buildHero(isDark),
+                _buildCategoryTiles(isDark),
+                _buildContinueLearning(isDark),
 
                 const SizedBox(height: 24),
 
@@ -324,78 +322,199 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopHeader(bool isDark) {
+  // ---------------------------------------------------------------------------
+  // HERO: banner slider sits behind the header, greeting and search card
+  // ---------------------------------------------------------------------------
+  Widget _buildHero(bool isDark) {
+    final topPad = MediaQuery.of(context).padding.top;
+    final heroHeight = 300.0 + topPad;
     String safeAvatar = _userAvatar ?? '';
     if (safeAvatar.isNotEmpty && !safeAvatar.startsWith('http')) {
       safeAvatar = 'https://academy.kainuwa.africa/$safeAvatar';
     }
+    final firstName = _userName.trim().split(' ').first;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 44),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              backgroundImage: safeAvatar.isNotEmpty ? CachedNetworkImageProvider(safeAvatar) : null,
-              child: safeAvatar.isEmpty ? const Icon(Icons.person_rounded, color: AppTheme.primaryColor) : null,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // 1. Banner images (or a purple gradient when there are none)
+          SizedBox(
+            height: heroHeight,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(_getGreeting(), style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600)),
-                  Text(_userName, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7351FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    ),
+                  ),
+                  if (_banners.isNotEmpty)
+                    PageView.builder(
+                      controller: _bannerController,
+                      onPageChanged: (index) => setState(() => _currentBannerIndex = index),
+                      itemCount: _banners.length,
+                      itemBuilder: (context, index) {
+                        final url = (_banners[index]['image_url'] ?? '').toString();
+                        if (url.isEmpty) return const SizedBox();
+                        return CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+                            errorWidget: (c, u, e) => const SizedBox());
+                      },
+                    ),
+                  // Soft overlays keep the header and greeting readable
+                  IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.35, 0.6, 1.0],
+                          colors: [
+                            const Color(0xFF2A1580).withOpacity(0.85),
+                            const Color(0xFF2A1580).withOpacity(0.15),
+                            const Color(0xFF2A1580).withOpacity(0.25),
+                            const Color(0xFF2A1580).withOpacity(0.9),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Search Courses'))),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)),
-              child: const Icon(Icons.search_rounded, size: 20),
+
+          // 2. Header row: logo + name on the left, search / bell / avatar on the right
+          Positioned(
+            top: topPad + 10, left: 16, right: 16,
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset('assets/kainuwa_logo.png', width: 38, height: 38, fit: BoxFit.contain),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('Kainuwa Academy', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                ),
+                _heroIconButton(Icons.search_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Search Courses')))),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())).then((_) => _fetchUnreadCount()),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _heroIconButton(Icons.notifications_none_rounded, null),
+                      if (_unreadNotifications > 0)
+                        Positioned(
+                          top: -3, right: -3,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                            child: Text(_unreadNotifications > 9 ? '9+' : '$_unreadNotifications', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
+                      backgroundImage: safeAvatar.isNotEmpty ? CachedNetworkImageProvider(safeAvatar) : null,
+                      child: safeAvatar.isEmpty ? const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 20) : null,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))
-                .then((_) => _fetchUnreadCount()); 
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.notifications_none_rounded, size: 20),
-                  if (_unreadNotifications > 0)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: isDark ? AppTheme.darkBackgroundColor : Colors.white, width: 1.5),
-                        ),
-                        child: Text(
-                          _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
-                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+
+          // 3. Greeting + call-to-action
+          Positioned(
+            left: 20, right: 20, bottom: 50,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_getGreeting().replaceAll(',', ''), style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(firstName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                    decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(30)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text('Start Learning', style: TextStyle(color: Color(0xFF1E1E2D), fontWeight: FontWeight.w800, fontSize: 14)),
+                        SizedBox(width: 6),
+                        Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF1E1E2D)),
+                      ],
                     ),
-                ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 4. Slider dots
+          if (_banners.length > 1)
+            Positioned(
+              right: 22, bottom: 58,
+              child: Row(
+                children: List.generate(
+                  _banners.length,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    height: 6,
+                    width: _currentBannerIndex == index ? 18 : 6,
+                    decoration: BoxDecoration(
+                      color: _currentBannerIndex == index ? const Color(0xFFFFC21A) : Colors.white.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // 5. Floating search card overlapping the hero
+          Positioned(
+            left: 16, right: 16, bottom: -28,
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Search Courses'))),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.12), blurRadius: 20, offset: const Offset(0, 8))],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('Search courses, skills or topics...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.tune_rounded, color: AppTheme.primaryColor, size: 18),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -404,161 +523,190 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBannerCarousel() {
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        SizedBox(
-          height: 160,
-          child: PageView.builder(
-            controller: _bannerController,
-            onPageChanged: (index) {
-              setState(() => _currentBannerIndex = index);
-            },
-            itemCount: _banners.length,
-            itemBuilder: (context, index) {
-              final banner = _banners[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  image: DecorationImage(
-                    image: CachedNetworkImageProvider(banner['image_url']), 
-                    fit: BoxFit.cover
-                  ),
-                ),
-              );
-            },
+  Widget _heroIconButton(IconData icon, VoidCallback? onTap) {
+    final w = Container(
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle),
+      child: Icon(icon, color: Colors.white, size: 20),
+    );
+    return onTap == null ? w : GestureDetector(onTap: onTap, child: w);
+  }
+
+  // ---------------------------------------------------------------------------
+  // CATEGORIES: coloured rounded tiles
+  // ---------------------------------------------------------------------------
+  static const List<Color> _tileColors = [
+    Color(0xFF7351FF), Color(0xFFFFB020), Color(0xFFEF4444), Color(0xFF2F80ED),
+    Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEC4899), Color(0xFF06B6D4),
+  ];
+
+  IconData _iconForCategory(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
+    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
+    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
+    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
+    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
+    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
+    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
+    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
+    if (n.contains('language') || n.contains('english') || n.contains('hausa')) return Icons.translate_rounded;
+    return Icons.category_rounded;
+  }
+
+  Widget _sectionHeader(String title, VoidCallback onSeeAll) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Row(children: const [
+              Text('See All', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+              SizedBox(width: 2),
+              Icon(Icons.arrow_forward_rounded, size: 15, color: AppTheme.primaryColor),
+            ]),
           ),
-        ),
-        Positioned(
-          bottom: 12,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _banners.length,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                height: 6,
-                width: _currentBannerIndex == index ? 20 : 6,
-                decoration: BoxDecoration(
-                  color: _currentBannerIndex == index ? AppTheme.primaryColor : Colors.white.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryTiles(bool isDark) {
+    final List<Map<String, dynamic>> cats = _categories.isNotEmpty
+        ? _categories.map<Map<String, dynamic>>((c) => {'id': c['id'].toString(), 'name': (c['name'] ?? '').toString()}).toList()
+        : [
+            {'id': '1', 'name': 'Coding'},
+            {'id': '2', 'name': 'Design'},
+            {'id': '3', 'name': 'Business'},
+            {'id': '4', 'name': 'Marketing'},
+          ];
+    final total = cats.length + 1; // + "More" tile
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: SizedBox(
+        height: 96,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          itemCount: total,
+          itemBuilder: (context, index) {
+            final isMore = index == cats.length;
+            final name = isMore ? 'More' : cats[index]['name'] as String;
+            final color = isMore ? Colors.grey.shade400 : _tileColors[index % _tileColors.length];
+            return GestureDetector(
+              onTap: () {
+                if (isMore) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen()));
+                } else {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(actionType: 'category_${cats[index]['id']}', title: name)));
+                }
+              },
+              child: SizedBox(
+                width: 76,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 5))],
+                      ),
+                      child: Icon(isMore ? Icons.grid_view_rounded : _iconForCategory(name), color: Colors.white, size: 26),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.15)),
+                  ],
                 ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CONTINUE LEARNING (only when the student has an unfinished course)
+  // ---------------------------------------------------------------------------
+  Widget _buildContinueLearning(bool isDark) {
+    final rc = _dashboardData != null ? _dashboardData!['recent_course'] : null;
+    if (rc == null || rc is! Map) return const SizedBox();
+    final id = int.tryParse(rc['id'].toString()) ?? 0;
+    if (id == 0) return const SizedBox();
+    final title = (rc['title'] ?? '').toString();
+    final progress = ((double.tryParse(rc['progress_percentage'].toString()) ?? 0).clamp(0, 100)).toDouble();
+    String thumb = (rc['thumbnail_url'] ?? '').toString();
+    if (thumb.isNotEmpty && !thumb.startsWith('http')) thumb = 'https://academy.kainuwa.africa/$thumb';
+
+    void open() => Navigator.push(context, MaterialPageRoute(builder: (_) => CoursePlayerScreen(courseId: id, courseTitle: title)));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            child: const Text('Continue Learning', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+          ),
+          GestureDetector(
+            onTap: open,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.07), blurRadius: 14, offset: const Offset(0, 5))],
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: thumb.isNotEmpty
+                        ? CachedNetworkImage(imageUrl: thumb, width: 110, height: 80, fit: BoxFit.cover)
+                        : Container(width: 110, height: 80, color: AppTheme.primaryColor.withOpacity(0.15), child: const Icon(Icons.school_rounded, color: AppTheme.primaryColor, size: 32)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, height: 1.2)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(value: progress / 100, minHeight: 7, backgroundColor: AppTheme.primaryColor.withOpacity(0.12), valueColor: const AlwaysStoppedAnimation(AppTheme.primaryColor)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('${progress.round()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 42, height: 42,
+                    decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.12), shape: BoxShape.circle),
+                    child: const Icon(Icons.play_arrow_rounded, color: AppTheme.primaryColor, size: 26),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoriesRow(bool isDark) {
-    return _buildCategoryTemplate(_categories, isDark);
-  }
-
-  Widget _buildFallbackCategoriesRow(bool isDark) {
-    final defaultCats = [
-      {'id': '1', 'name': 'Coding', 'icon': Icons.code_rounded},
-      {'id': '2', 'name': 'Design', 'icon': Icons.brush_rounded},
-      {'id': '3', 'name': 'Business', 'icon': Icons.business_center_rounded},
-      {'id': '4', 'name': 'Marketing', 'icon': Icons.campaign_rounded},
-    ];
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
-                child: const Text('See All', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: defaultCats.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(actionType: 'category_${defaultCats[index]['id']}', title: defaultCats[index]['name'] as String))),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-                        child: Icon(defaultCats[index]['icon'] as IconData, color: AppTheme.primaryColor, size: 24),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(defaultCats[index]['name'] as String, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryTemplate(List<dynamic> cats, bool isDark) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
-                child: const Text('See All', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: cats.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(actionType: 'category_${cats[index]['id']}', title: cats[index]['name'])));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-                        child: const Icon(Icons.category_rounded, color: AppTheme.primaryColor, size: 24),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(cats[index]['name'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
