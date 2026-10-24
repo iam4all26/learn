@@ -4,7 +4,6 @@ class ApiConfig {
   static const String googleAuth = '$baseUrl/google_auth.php';
   static const String registerNative = '$baseUrl/register_native.php';
   static const String verifyOtp = '$baseUrl/verify_otp.php';
-  static const String courses = '$baseUrl/courses.php';
   static const String myCourses = '$baseUrl/my_courses.php';
   static const String courseLessons = '$baseUrl/course_lessons.php';
   static const String saveProgress = '$baseUrl/save_progress.php';

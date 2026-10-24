@@ -195,15 +195,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
           throw Exception(data['message'] ?? "Error");
         }
       } else {
-        throw Exception("Server Error");
+        // 429 (too many messages) and similar answers carry a readable message in the body
+        String serverMsg = "Server Error";
+        try {
+          final body = json.decode(response.body);
+          if (body is Map && body['message'] != null) serverMsg = body['message'].toString();
+        } catch (_) {}
+        throw Exception(serverMsg);
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          String errText = "Connection timeout. The free AI provider is currently busy.";
-          String cleanError = e.toString().replaceAll('Exception: ', '');
-          if (cleanError.contains('overloaded') || cleanError.contains('failed to generate') || cleanError.contains('timeout')) {
+          String errText = "Could not reach Kainuwa AI. Please check your internet connection.";
+          String cleanError = e.toString().replaceAll('Exception: ', '').trim();
+          // Show the server's own message (for example "The AI is not available right now ...") instead of hiding it
+          if (cleanError.isNotEmpty && cleanError != 'Server Error' && !cleanError.contains('SocketException') && !cleanError.contains('ClientException')) {
               errText = cleanError;
+          } else if (cleanError == 'Server Error') {
+              errText = "Kainuwa AI had a server problem. Please try again.";
           }
           // CRITICAL FIX: Pushing the precise error message with isError = true to trigger the Retry UI
           _messages.add(ChatMessage(text: "$errText Tap to retry.", isUser: false, isError: true));

@@ -377,6 +377,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen()));
                 }),
                 
+                _buildOptionTile(icon: Icons.delete_forever_rounded, title: 'Delete My Account', isDark: isDark, isLogout: true, trailing: const SizedBox(), onTap: () => _openWebDashboard('Delete My Account', '/delete-account')),
+
                 const SizedBox(height: 10),
                 _buildOptionTile(icon: Icons.logout_rounded, title: 'Log Out', isDark: isDark, isLogout: true, trailing: const SizedBox(), onTap: _handleLogout),
                 const SizedBox(height: 40),
