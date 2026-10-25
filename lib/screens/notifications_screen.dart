@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
+import '../widgets/page_header.dart';
 import '../utils/kaida_alert.dart';
 import 'course_player_screen.dart';
 import 'main_layout.dart';
@@ -25,6 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> _groupedItems = []; 
   List<dynamic> _rawNotifications = [];
   int? _userId;
+  int _tab = 0; // 0 All, 1 Courses, 2 KAIDA Points, 3 Announcements
 
   @override
   void initState() {
@@ -49,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final data = json.decode(response.body);
         if (data['status'] == 'success' && mounted) {
           _rawNotifications = data['data'];
-          _processNotifications(_rawNotifications);
+          _processNotifications(_visible());
         }
       }
     } catch (e) {
@@ -94,8 +96,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     List<dynamic> grouped = [];
     if (todayList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'Today'}); grouped.addAll(todayList); }
     if (yesterdayList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'Yesterday'}); grouped.addAll(yesterdayList); }
-    if (lastWeekList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'Last 7 Days'}); grouped.addAll(lastWeekList); }
-    if (olderList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'Older'}); grouped.addAll(olderList); }
+    if (lastWeekList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'This Week'}); grouped.addAll(lastWeekList); }
+    if (olderList.isNotEmpty) { grouped.add({'is_header': true, 'title': 'Earlier'}); grouped.addAll(olderList); }
 
     setState(() {
       _groupedItems = grouped;
@@ -103,14 +105,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  Future<void> _markAsReadAndRoute(Map<String, dynamic> notif) async {
+  Future<void> _markAsReadAndRoute(Map<String, dynamic> notif, {Map? ref}) async {
     if (_userId == null) return;
     
     int notifId = int.tryParse(notif['id'].toString()) ?? 0;
     bool isRead = notif['is_read'] == 1 || notif['is_read'] == '1';
 
     if (!isRead) {
-      setState(() { notif['is_read'] = 1; });
+      setState(() { notif['is_read'] = 1; if (ref != null) ref['is_read'] = 1; });
       String apiUrl = '${ApiConfig.baseUrl}/notifications_api.php'.replaceAll('//notifications_api', '/notifications_api');
       http.post(Uri.parse(apiUrl), body: {'action': 'mark_read', 'user_id': _userId.toString(), 'notification_id': notifId.toString()});
     }
@@ -159,108 +161,169 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return '${diff.inMinutes}m';
   }
 
+  // ---- Categories and per-type look ----
+  String _text(dynamic n) => '${n['title'] ?? ''} ${n['message'] ?? ''}'.toLowerCase();
+
+  // 'courses', 'points' or 'announcements'. No category column exists in the database,
+  // so it is worked out from the action type and the wording.
+  String _categoryOf(dynamic n) {
+    final t = _text(n);
+    final action = n['action_type']?.toString() ?? '';
+    if (RegExp(r'kaida|point|token|wallet|coin|reward|bonus|earn').hasMatch(t)) return 'points';
+    final cid = int.tryParse(n['course_id']?.toString() ?? '0') ?? 0;
+    if (action == 'open_course' || cid > 0 || RegExp(r'course|lesson|enrol|certificate|quiz|assignment').hasMatch(t)) return 'courses';
+    return 'announcements';
+  }
+
+  List<dynamic> _visible() {
+    if (_tab == 0) return _rawNotifications;
+    const keys = ['', 'courses', 'points', 'announcements'];
+    return _rawNotifications.where((n) => _categoryOf(n) == keys[_tab]).toList();
+  }
+
+  int _count(int tab) {
+    if (tab == 0) return _rawNotifications.length;
+    const keys = ['', 'courses', 'points', 'announcements'];
+    return _rawNotifications.where((n) => _categoryOf(n) == keys[tab]).length;
+  }
+
+  // icon + colour for one notification
+  (IconData, Color) _look(dynamic n) {
+    final t = _text(n);
+    if (RegExp(r'certificate').hasMatch(t)) return (Icons.workspace_premium_rounded, const Color(0xFFF2711C));
+    if (RegExp(r'warning|expir|failed|declin|reject|suspend|alert|reminder|overdue').hasMatch(t)) return (Icons.warning_amber_rounded, const Color(0xFFEF4444));
+    if (RegExp(r'gift|bonus|reward|free').hasMatch(t)) return (Icons.card_giftcard_rounded, const Color(0xFFE5489B));
+    if (RegExp(r'kaida|point|token|wallet|coin|earn').hasMatch(t)) return (Icons.monetization_on_rounded, const Color(0xFFFFB020));
+    if (RegExp(r'complet|congrat|success|approved|verified|welcome').hasMatch(t)) return (Icons.check_circle_rounded, const Color(0xFF22A06B));
+    final cat = _categoryOf(n);
+    if (cat == 'courses') return (Icons.school_rounded, const Color(0xFF7351FF));
+    return (Icons.campaign_rounded, const Color(0xFF2F80ED));
+  }
+
+  void _setTab(int i) {
+    _tab = i;
+    _processNotifications(_visible());
+  }
+
+  int get _unread => _rawNotifications.where((n) => !(n['is_read'] == 1 || n['is_read'] == '1')).length;
+
+  Widget _notifCard(Map notif, bool isDark) {
+    final isRead = notif['is_read'] == 1 || notif['is_read'] == '1';
+    final look = _look(notif);
+    final imageUrl = notif['image_url']?.toString() ?? '';
+    return GestureDetector(
+      onTap: () => _markAsReadAndRoute(Map<String, dynamic>.from(notif), ref: notif),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.15 : 0.05), blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(color: look.$2.withOpacity(0.14), borderRadius: BorderRadius.circular(14)),
+              child: imageUrl.isNotEmpty
+                  ? ClipRRect(borderRadius: BorderRadius.circular(14), child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, errorWidget: (_, __, ___) => Icon(look.$1, color: look.$2, size: 25)))
+                  : Icon(look.$1, color: look.$2, size: 25),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(_decode('${notif['title'] ?? 'Notification'}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: isRead ? FontWeight.w700 : FontWeight.w900, fontSize: 14.5, color: isDark ? Colors.white : Colors.black87))),
+                      const SizedBox(width: 6),
+                      Text(_formatTime(notif['created_at']?.toString() ?? ''), style: TextStyle(color: Colors.grey.shade500, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(_decode('${notif['message'] ?? ''}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: isRead ? Colors.grey.shade500 : (isDark ? Colors.grey.shade300 : Colors.black54), fontSize: 13, height: 1.35)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Column(
+              children: [
+                if (!isRead) Container(width: 9, height: 9, decoration: const BoxDecoration(color: Color(0xFF7351FF), shape: BoxShape.circle)) else const SizedBox(height: 9),
+                const SizedBox(height: 6),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _decode(String s) => s
+      .replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#039;', "'").replaceAll('&#39;', "'")
+      .replaceAll('&lt;', '<').replaceAll('&gt;', '>');
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tabLabels = [
+      'All (${_count(0)})', 'Courses (${_count(1)})', 'KAIDA Points (${_count(2)})', 'Announcements (${_count(3)})',
+    ];
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black, size: 20), onPressed: () => Navigator.pop(context, true)),
-        title: Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-        actions: [
-          if (_rawNotifications.isNotEmpty)
-            IconButton(icon: Icon(Icons.done_all_rounded, color: AppTheme.primaryColor, size: 24), onPressed: _markAllAsRead, tooltip: 'Mark all as read'),
+      backgroundColor: isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FB),
+      body: Column(
+        children: [
+          PageHeader(
+            title: 'Notifications',
+            subtitle: _unread > 0 ? 'You have $_unread unread' : 'Stay updated with everything important',
+            illustration: Icons.notifications_active_rounded,
+            actions: [
+              if (_rawNotifications.isNotEmpty) PageHeader.circleButton(Icons.done_all_rounded, _markAllAsRead),
+            ],
+            bottom: HeaderTabs(labels: tabLabels, selected: _tab, onChanged: _setTab),
+            bottomPadding: 16,
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: KaidaLoader())
+                : RefreshIndicator(
+                    color: AppTheme.primaryColor,
+                    onRefresh: _fetchNotifications,
+                    child: _groupedItems.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              const SizedBox(height: 90),
+                              Icon(Icons.notifications_off_rounded, size: 80, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Center(child: Text('All Caught Up!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black))),
+                              const SizedBox(height: 8),
+                              Center(child: Text('No notifications here.', style: TextStyle(color: Colors.grey.shade500))),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 30),
+                            itemCount: _groupedItems.length,
+                            itemBuilder: (context, index) {
+                              final item = _groupedItems[index];
+                              if (item is Map && item.containsKey('is_header')) {
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                                  child: Text(item['title'].toString(), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
+                                );
+                              }
+                              return _notifCard(item as Map, isDark);
+                            },
+                          ),
+                  ),
+          ),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: KaidaLoader())
-        : _groupedItems.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_off_rounded, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text('All Caught Up!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                  const SizedBox(height: 8),
-                  Text('You have no new notifications.', style: TextStyle(color: Colors.grey.shade500)),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              color: AppTheme.primaryColor,
-              onRefresh: _fetchNotifications,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: _groupedItems.length,
-                itemBuilder: (context, index) {
-                  final item = _groupedItems[index];
-
-                  if (item is Map && item.containsKey('is_header')) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                      child: Text(
-                        item['title'].toString().toUpperCase(),
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, letterSpacing: 1.2),
-                      ),
-                    );
-                  }
-
-                  final notif = item;
-                  bool isRead = notif['is_read'] == 1 || notif['is_read'] == '1';
-                  String imageUrl = notif['image_url']?.toString() ?? '';
-
-                  return InkWell(
-                    onTap: () => _markAsReadAndRoute(notif),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: isRead ? Colors.transparent : (isDark ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.primaryColor.withOpacity(0.05)),
-                        border: Border(bottom: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade100, width: 1)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 50, height: 50,
-                            decoration: BoxDecoration(
-                              color: isRead ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200) : AppTheme.primaryColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: imageUrl.isNotEmpty
-                              ? ClipRRect(borderRadius: BorderRadius.circular(12), child: CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover))
-                              : Icon(Icons.notifications_active_rounded, color: isRead ? Colors.grey : AppTheme.primaryColor, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(child: Text(notif['title'] ?? 'Notification', style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : Colors.black87))),
-                                    if (!isRead) Container(width: 8, height: 8, margin: const EdgeInsets.only(left: 8), decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle)),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(notif['message'] ?? '', style: TextStyle(color: isRead ? Colors.grey.shade500 : (isDark ? Colors.grey.shade300 : Colors.black54), fontSize: 14, height: 1.4)),
-                                const SizedBox(height: 8),
-                                Text(_formatTime(notif['created_at']?.toString() ?? ''), style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
     );
   }
 }

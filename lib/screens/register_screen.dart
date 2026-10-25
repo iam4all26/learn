@@ -8,6 +8,7 @@ import '../config/app_theme.dart';
 import '../services/auth_service.dart';
 import '../widgets/kaida_loader.dart';
 import '../utils/kaida_alert.dart';
+import '../widgets/auth_shell.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
 import 'main_layout.dart';
@@ -243,139 +244,103 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildBottomSheetDropdown({required IconData icon, required String label, required String? valueName, required VoidCallback onTap, required bool isDark, bool disabled = false}) {
-    return GestureDetector(
-      onTap: disabled ? null : onTap, behavior: HitTestBehavior.opaque,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(disabled ? 0.03 : 0.08), shape: BoxShape.circle), child: Icon(icon, color: disabled ? Colors.grey : AppTheme.primaryColor, size: 22)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
-                Container(
-                  width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1.5))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(child: Text(valueName ?? 'Select', style: TextStyle(color: valueName == null || disabled ? Colors.grey : (isDark ? Colors.white : Colors.black), fontSize: 16, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade400, size: 20),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  void _handleGoogleSignUp() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
+    final result = await _authService.signInWithGoogle();
+    if (mounted) setState(() => _isLoading = false);
+    if (!mounted) return;
 
-  Widget _buildCustomInput({required IconData icon, required String label, required TextEditingController controller, required bool isDark, bool isPassword = false, bool isConfirm = false, bool isReadOnly = false, Function(String)? onChanged, Widget? statusWidget}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.08), shape: BoxShape.circle), child: Icon(icon, color: AppTheme.primaryColor, size: 22)),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
-              TextField(
-                controller: controller, onChanged: onChanged, readOnly: isReadOnly,
-                obscureText: isPassword ? (isConfirm ? _obscureConfirmPassword : _obscurePassword) : false,
-                style: TextStyle(color: isReadOnly ? Colors.grey : (isDark ? Colors.white : Colors.black), fontSize: 16, fontWeight: FontWeight.w500),
-                decoration: InputDecoration(
-                  isDense: true, contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: isReadOnly ? Colors.grey.shade300 : AppTheme.primaryColor, width: 2)),
-                  suffixIconConstraints: const BoxConstraints(maxHeight: 32, maxWidth: 60),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (statusWidget != null) statusWidget,
-                      if (isPassword) IconButton(padding: EdgeInsets.zero, icon: Icon((isConfirm ? _obscureConfirmPassword : _obscurePassword) ? Icons.visibility_off : Icons.visibility, color: Colors.grey.shade400, size: 20), onPressed: () => setState(() { if (isConfirm) _obscureConfirmPassword = !_obscureConfirmPassword; else _obscurePassword = !_obscurePassword; })),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    if (result['success'] == true) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainLayout()));
+    } else if (result['needs_registration'] == true) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RegisterScreen(prefillEmail: result['email'], prefillName: result['name'])));
+    } else {
+      KaidaAlert.showModal(context: context, title: 'Authentication Error', message: result['message'], isError: true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    Widget? usernameStatusWidget;
-    if (_isCheckingUsername) usernameStatusWidget = const Padding(padding: EdgeInsets.only(right: 8), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)));
-    else if (_isUsernameAvailable == true) usernameStatusWidget = const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.check_circle, color: Colors.green, size: 18));
-    else if (_isUsernameAvailable == false) usernameStatusWidget = const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.cancel, color: Colors.red, size: 18));
 
-    Widget? passwordStatusWidget;
-    if (_passwordsMatch == true) passwordStatusWidget = const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.check_circle, color: Colors.green, size: 18));
-    else if (_passwordsMatch == false) passwordStatusWidget = const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.cancel, color: Colors.red, size: 18));
+    Widget? usernameStatus;
+    if (_isCheckingUsername) {
+      usernameStatus = const Padding(padding: EdgeInsets.only(right: 6), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)));
+    } else if (_isUsernameAvailable == true) {
+      usernameStatus = const Padding(padding: EdgeInsets.only(right: 6), child: Icon(Icons.check_circle, color: Colors.green, size: 19));
+    } else if (_isUsernameAvailable == false) {
+      usernameStatus = const Padding(padding: EdgeInsets.only(right: 6), child: Icon(Icons.cancel, color: Colors.red, size: 19));
+    }
 
-    return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: IconButton(icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black, size: 20), onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())))),
-      body: SafeArea(
-        child: _isLoading 
-        ? const Center(child: KaidaLoader()) 
-        : SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Create Account', textAlign: TextAlign.center, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                const SizedBox(height: 8),
-                Text(widget.prefillEmail != null ? 'Please complete your profile details below' : 'Sign up to start learning with Kainuwa Academy', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
-                const SizedBox(height: 40),
-                
-                _buildCustomInput(icon: Icons.person_rounded, label: 'Full Name', controller: _fullNameController, isDark: isDark),
-                const SizedBox(height: 24),
-                
-                _buildCustomInput(icon: Icons.alternate_email_rounded, label: 'Username', controller: _usernameController, isDark: isDark, onChanged: _onUsernameChanged, statusWidget: usernameStatusWidget),
-                if (_isUsernameAvailable == false) const Padding(padding: EdgeInsets.only(left: 58, top: 4), child: Text('Username is already taken', style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold))),
-                const SizedBox(height: 24),
-                
-                _buildCustomInput(icon: Icons.email_rounded, label: 'Email address', controller: _emailController, isDark: isDark, isReadOnly: widget.prefillEmail != null),
-                const SizedBox(height: 24),
-                
-                _buildBottomSheetDropdown(icon: Icons.language_rounded, label: 'Preferred Language', valueName: _selectedLanguage == 'ha' ? 'Hausa' : 'English', isDark: isDark, onTap: () => _openSelectionSheet(title: 'Language', items: _languages, onSelect: (id, name) => setState(() => _selectedLanguage = id))),
-                const SizedBox(height: 24),
-                _buildBottomSheetDropdown(icon: Icons.public_rounded, label: 'Country', valueName: _selectedCountryName, isDark: isDark, disabled: _countries.isEmpty, onTap: () => _openSelectionSheet(title: 'Country', items: _countries, onSelect: (id, name) { setState(() { _selectedCountryId = id; _selectedCountryName = name; }); _fetchStates(id); })),
-                const SizedBox(height: 24),
-                _buildBottomSheetDropdown(icon: Icons.map_rounded, label: 'State', valueName: _selectedStateName, isDark: isDark, disabled: _states.isEmpty, onTap: () => _openSelectionSheet(title: 'State', items: _states, onSelect: (id, name) { setState(() { _selectedStateId = id; _selectedStateName = name; }); _fetchCities(id); })),
-                const SizedBox(height: 24),
-                _buildBottomSheetDropdown(icon: Icons.location_city_rounded, label: 'City', valueName: _selectedCityName, isDark: isDark, disabled: _cities.isEmpty, onTap: () => _openSelectionSheet(title: 'City', items: _cities, onSelect: (id, name) => setState(() { _selectedCityId = id; _selectedCityName = name; }))),
-                const SizedBox(height: 24),
-                
-                _buildCustomInput(icon: Icons.lock_rounded, label: 'Password', controller: _passwordController, isDark: isDark, isPassword: true, onChanged: (val) => _onPasswordChanged()),
-                const SizedBox(height: 24),
-                _buildCustomInput(icon: Icons.lock_reset_rounded, label: 'Confirm Password', controller: _confirmPasswordController, isDark: isDark, isPassword: true, isConfirm: true, onChanged: (val) => _onPasswordChanged(), statusWidget: passwordStatusWidget),
-                const SizedBox(height: 30),
-                
-                Row(
-                  children: [
-                    SizedBox(height: 24, width: 24, child: Checkbox(value: _agreeTerms, activeColor: AppTheme.primaryColor, onChanged: (val) => setState(() => _agreeTerms = val ?? false))),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text('I am at least 16 years old and I agree to the Terms & Conditions', style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade300 : Colors.black87))),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                
-                SizedBox(height: 52, child: ElevatedButton(onPressed: _handleRegister, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), elevation: 0), child: const Text('Sign Up', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)))),
-                const SizedBox(height: 40),
-              ],
-            ),
+    Widget? passwordStatus;
+    if (_passwordsMatch == true) {
+      passwordStatus = const Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.check_circle, color: Colors.green, size: 19));
+    } else if (_passwordsMatch == false) {
+      passwordStatus = const Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.cancel, color: Colors.red, size: 19));
+    }
+
+    final isGoogle = widget.prefillEmail != null;
+
+    return AuthShell(
+      title: 'Create Account',
+      subtitle: isGoogle ? 'Complete your details to finish signing up.' : 'Join thousands of learners and start learning new skills with Kainuwa Academy.',
+      activeTab: 1,
+      loading: _isLoading,
+      onBack: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
+      onSignInTab: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
+      onSignUpTab: () {},
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthField(icon: Icons.person_outline_rounded, label: 'Full Name', hint: 'e.g. Usama Musa Gudu', controller: _fullNameController),
+          const SizedBox(height: 12),
+          AuthField(icon: Icons.alternate_email_rounded, label: 'Username', hint: 'e.g. usamgudu', controller: _usernameController, onChanged: _onUsernameChanged, status: usernameStatus),
+          if (_isUsernameAvailable == false)
+            const Padding(padding: EdgeInsets.only(left: 6, top: 4), child: Text('Username is already taken', style: TextStyle(color: Colors.red, fontSize: 11.5, fontWeight: FontWeight.bold))),
+          const SizedBox(height: 12),
+          AuthField(icon: Icons.mail_outline_rounded, label: 'Email', hint: 'e.g. usama@example.com', controller: _emailController, readOnly: isGoogle, keyboardType: TextInputType.emailAddress),
+          const SizedBox(height: 12),
+          AuthSelectRow(icon: Icons.translate_rounded, label: 'Preferred Language', value: _selectedLanguage == 'ha' ? 'Hausa' : 'English', placeholder: 'Select', onTap: () => _openSelectionSheet(title: 'Language', items: _languages, onSelect: (id, name) => setState(() => _selectedLanguage = id))),
+          const SizedBox(height: 12),
+          AuthSelectRow(icon: Icons.public_rounded, label: 'Country', value: _selectedCountryName, placeholder: 'Select country', disabled: _countries.isEmpty, onTap: () => _openSelectionSheet(title: 'Country', items: _countries, onSelect: (id, name) { setState(() { _selectedCountryId = id; _selectedCountryName = name; }); _fetchStates(id); })),
+          const SizedBox(height: 12),
+          AuthSelectRow(icon: Icons.map_outlined, label: 'State', value: _selectedStateName, placeholder: 'Select state', disabled: _states.isEmpty, onTap: () => _openSelectionSheet(title: 'State', items: _states, onSelect: (id, name) { setState(() { _selectedStateId = id; _selectedStateName = name; }); _fetchCities(id); })),
+          const SizedBox(height: 12),
+          AuthSelectRow(icon: Icons.location_city_rounded, label: 'City', value: _selectedCityName, placeholder: 'Select city', disabled: _cities.isEmpty, onTap: () => _openSelectionSheet(title: 'City', items: _cities, onSelect: (id, name) => setState(() { _selectedCityId = id; _selectedCityName = name; }))),
+          const SizedBox(height: 12),
+          AuthField(icon: Icons.lock_outline_rounded, label: 'Password', hint: 'Create a password', controller: _passwordController, isPassword: true, obscure: _obscurePassword, onChanged: (v) => _onPasswordChanged(), onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword)),
+          const SizedBox(height: 12),
+          AuthField(icon: Icons.lock_reset_rounded, label: 'Confirm Password', hint: 'Repeat your password', controller: _confirmPasswordController, isPassword: true, obscure: _obscureConfirmPassword, onChanged: (v) => _onPasswordChanged(), onToggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword), status: passwordStatus),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 24, width: 24, child: Checkbox(value: _agreeTerms, activeColor: AppTheme.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), onChanged: (val) => setState(() => _agreeTerms = val ?? false))),
+              const SizedBox(width: 12),
+              Expanded(child: Text('I am at least 16 years old and I agree to the Terms & Conditions and Privacy Policy.', style: TextStyle(fontSize: 13, height: 1.35, color: isDark ? Colors.grey.shade300 : Colors.black87))),
+            ],
           ),
+          const SizedBox(height: 20),
+          AuthPrimaryButton(label: 'Create Account', onPressed: _handleRegister),
+          if (!isGoogle) ...[
+            const SizedBox(height: 18),
+            const AuthOrDivider(),
+            const SizedBox(height: 16),
+            AuthGoogleButton(onPressed: _handleGoogleSignUp, googleIcon: const FaIcon(FontAwesomeIcons.google, color: Colors.redAccent, size: 20)),
+          ],
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Already have an account? ', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+              GestureDetector(
+                onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
+                child: const Text('Sign in now', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 14)),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
