@@ -396,7 +396,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 70),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

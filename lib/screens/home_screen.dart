@@ -343,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
             height: heroHeight,
             width: double.infinity,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+              borderRadius: BorderRadius.zero,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -360,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (context, index) {
                         final url = (_banners[index]['image_url'] ?? '').toString();
                         if (url.isEmpty) return const SizedBox();
-                        return CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+                        return CachedNetworkImage(imageUrl: url, fit: BoxFit.fitWidth, alignment: Alignment.bottomCenter, width: double.infinity, height: double.infinity,
                             errorWidget: (c, u, e) => const SizedBox());
                       },
                     ),

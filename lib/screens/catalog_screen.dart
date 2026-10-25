@@ -535,7 +535,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 52),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7351FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
                   ),
                   child: Row(
                     children: [
