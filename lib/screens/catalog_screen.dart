@@ -103,6 +103,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   String _selectedCategory = 'All';
   String _selectedLevel = 'All';
+  String _chip = 'All'; // All | New | Top Rated | Free | On Sale
   String _selectedProductType = 'All'; 
   RangeValues _priceRange = const RangeValues(0, 100000);
 
@@ -218,6 +219,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
         if (a.isComingSoon == b.isComingSoon) return 0;
         return a.isComingSoon ? 1 : -1;
       });
+
+      if (!isProductMode) {
+        if (_chip == 'New') {
+          _filteredItems = _filteredItems.where((i) => !i.isComingSoon).take(12).toList();
+        } else if (_chip == 'Top Rated') {
+          _filteredItems.sort((a, b) => b.avgRating.compareTo(a.avgRating));
+        } else if (_chip == 'Free') {
+          _filteredItems = _filteredItems.where((i) => i.isFree || (i.price == 0 && i.discountPrice == 0)).toList();
+        } else if (_chip == 'On Sale') {
+          _filteredItems = _filteredItems.where((i) => i.discountPrice > 0 && i.discountPrice < i.price).toList();
+        }
+      }
     });
   }
 
@@ -379,6 +392,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.actionType.contains('products')) return _buildLegacy(context);
+    return _buildCourses(context);
+  }
+
+  Widget _buildLegacy(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     bool isProductMode = widget.actionType.contains('products');
 
@@ -460,6 +478,367 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           itemBuilder: (context, index) => _buildGridCard(_filteredItems[index], isDark),
                         ),
                       ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // COURSES layout (purple header, floating search, colour tiles, chips, grid)
+  // ---------------------------------------------------------------------------
+  static const List<Color> _tileColors = [
+    Color(0xFF7351FF), Color(0xFFFFB020), Color(0xFFEF4444), Color(0xFF2F80ED),
+    Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEC4899), Color(0xFF06B6D4),
+  ];
+
+  IconData _iconForCategory(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
+    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
+    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
+    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
+    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
+    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
+    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
+    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
+    return Icons.category_rounded;
+  }
+
+  Widget _buildCourses(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topPad = MediaQuery.of(context).padding.top;
+    final canPop = Navigator.of(context).canPop();
+    final isCategoryPage = widget.actionType.startsWith('category_');
+
+    // Categories found in the loaded courses
+    final List<String> catNames = [];
+    for (final i in _allItems) {
+      if (i.categoryName.isNotEmpty && !catNames.contains(i.categoryName)) catNames.add(i.categoryName);
+    }
+    final chips = ['All', 'New', 'Top Rated', 'Free', 'On Sale'];
+
+    return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
+      body: Column(
+        children: [
+          // Header + floating search
+          Padding(
+            padding: const EdgeInsets.only(bottom: 30),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(20, topPad + 14, 20, 52),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7351FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+                  ),
+                  child: Row(
+                    children: [
+                      if (canPop) ...[
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle),
+                            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                            const SizedBox(height: 2),
+                            const Text('Learn practical skills step by step', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.school_rounded, color: Colors.white24, size: 54),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 16, right: 16, bottom: -26,
+                  child: Container(
+                    padding: const EdgeInsets.only(left: 14, right: 8),
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.12), blurRadius: 18, offset: const Offset(0, 8))],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Search courses, skills or topics...',
+                              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                              border: InputBorder.none,
+                              isDense: true,
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(icon: Icon(Icons.close_rounded, color: Colors.grey.shade500, size: 18), onPressed: () => _searchController.clear())
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _showFilterModal(isDark),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                            child: const Icon(Icons.tune_rounded, color: AppTheme.primaryColor, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Expanded(
+            child: _isLoading
+                ? const Center(child: KaidaLoader())
+                : RefreshIndicator(
+                    color: AppTheme.primaryColor,
+                    onRefresh: _fetchCatalog,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        // Colour category tiles
+                        if (!isCategoryPage && catNames.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: SizedBox(
+                              height: 94,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+                                itemCount: catNames.length + 1,
+                                itemBuilder: (context, index) {
+                                  final isAll = index == 0;
+                                  final name = isAll ? 'All' : catNames[index - 1];
+                                  final color = isAll ? AppTheme.primaryColor : _tileColors[(index - 1) % _tileColors.length];
+                                  final selected = _selectedCategory == name;
+                                  return GestureDetector(
+                                    onTap: () { _selectedCategory = name; _filterResults(); },
+                                    child: SizedBox(
+                                      width: 74,
+                                      child: Column(
+                                        children: [
+                                          AnimatedContainer(
+                                            duration: const Duration(milliseconds: 180),
+                                            width: 52, height: 52,
+                                            decoration: BoxDecoration(
+                                              color: color,
+                                              borderRadius: BorderRadius.circular(17),
+                                              border: Border.all(color: selected ? (isDark ? Colors.white : const Color(0xFF1E1E2D)) : Colors.transparent, width: 2.5),
+                                              boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 9, offset: const Offset(0, 4))],
+                                            ),
+                                            child: Icon(isAll ? Icons.grid_view_rounded : _iconForCategory(name), color: Colors.white, size: 24),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: 10.5, height: 1.15, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+
+                        // Filter chips
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: 56,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                              itemCount: chips.length,
+                              itemBuilder: (context, index) {
+                                final label = chips[index];
+                                final selected = _chip == label;
+                                final text = label == 'All' ? 'All (${_allItems.length})' : label;
+                                return GestureDetector(
+                                  onTap: () { _chip = label; _filterResults(); },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: selected ? AppTheme.primaryColor : (isDark ? AppTheme.darkSurfaceColor : const Color(0xFFF3F1FF)),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? Colors.white : (isDark ? Colors.grey.shade300 : const Color(0xFF3B3B4F)))),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+
+                        if (_filteredItems.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+                                  const SizedBox(height: 16),
+                                  Text('No courses found', style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 100),
+                            sliver: SliverGrid(
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 14,
+                                mainAxisExtent: 282,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) => _buildCourseGridCard(_filteredItems[index], isDark),
+                                childCount: _filteredItems.length,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCourseGridCard(CatalogItem item, bool isDark) {
+    final isWishlisted = _wishlistedCourseIds.contains(item.id);
+    final isFree = item.isFree || (item.price == 0 && item.discountPrice == 0);
+    final hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ItemDetailsScreen(item: item))),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.07), blurRadius: 12, offset: const Offset(0, 5))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                  child: item.thumbnailUrl.isNotEmpty
+                      ? CachedNetworkImage(imageUrl: item.thumbnailUrl, height: 112, width: double.infinity, fit: BoxFit.cover)
+                      : Container(height: 112, width: double.infinity, color: AppTheme.primaryColor.withOpacity(0.15), child: const Icon(Icons.school_rounded, size: 40, color: AppTheme.primaryColor)),
+                ),
+                if (item.isComingSoon)
+                  Container(height: 112, decoration: const BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.vertical(top: Radius.circular(18))), child: const Center(child: Icon(Icons.lock_clock_rounded, color: Colors.white, size: 30))),
+                // Tag chip (top-left)
+                Positioned(
+                  top: 8, left: 8,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 96),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(10)),
+                    child: Text(
+                      item.isComingSoon ? 'Coming Soon' : (hasDiscount ? 'On Sale' : item.language),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFF1E1E2D), fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+                if (!item.isComingSoon)
+                  Positioned(
+                    top: 6, right: 6,
+                    child: GestureDetector(
+                      onTap: () => _toggleWishlist(item.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: isDark ? Colors.black54 : Colors.white.withOpacity(0.92), shape: BoxShape.circle),
+                        child: Icon(isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: isWishlisted ? Colors.redAccent : Colors.grey.shade600, size: 17),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Icon(Icons.person_rounded, size: 12, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(item.instructorName, style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.play_lesson_rounded, size: 13, color: Colors.grey.shade500),
+                        const SizedBox(width: 3),
+                        Expanded(child: Text(item.lessonCount > 0 ? '${item.lessonCount} Lessons' : 'Lessons soon', style: TextStyle(color: Colors.grey.shade600, fontSize: 10.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        if (item.avgRating > 0) ...[
+                          const Icon(Icons.star_rounded, size: 15, color: Color(0xFFFFB020)),
+                          const SizedBox(width: 2),
+                          Text(item.avgRating.toStringAsFixed(1), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                        ] else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                            child: const Text('New', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w800)),
+                          ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: item.isComingSoon
+                          ? const Text('COMING SOON', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w800, fontSize: 12))
+                          : isFree
+                              ? const Text('FREE', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w900, fontSize: 15))
+                              : hasDiscount
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text('₦${item.price.toStringAsFixed(0)}', style: TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 5),
+                                        Text('₦${item.discountPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryColor)),
+                                      ],
+                                    )
+                                  : Text('₦${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryColor)),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
