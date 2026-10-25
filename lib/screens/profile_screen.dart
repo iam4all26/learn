@@ -39,6 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _avatarUrl;
   String _walletBalance = "0.00";
   String _username = '';
+  List<Map<String, dynamic>> _badges = [];
   int _enrolled = 0;
   int _completed = 0;
   
@@ -102,6 +103,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _email = data['data']['email'] ?? _email;
             _role = data['data']['role'] ?? _role;
             if (data['data']['username'] != null) _username = data['data']['username'].toString();
+            if (data['data']['badges'] is List) {
+              _badges = (data['data']['badges'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+            }
             
             String rawAvatar = data['data']['avatar_url']?.toString() ?? '';
             if (rawAvatar.isNotEmpty && !rawAvatar.startsWith('http')) {
@@ -232,6 +236,154 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'affiliate': return 'Affiliate';
       default: return 'Student';
     }
+  }
+
+  Widget _themeToggle(bool isDark, ThemeProvider tp) {
+    return GestureDetector(
+      onTap: () => tp.toggleTheme(!isDark),
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(30)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _toggleDot(Icons.light_mode_rounded, !isDark),
+            _toggleDot(Icons.dark_mode_rounded, isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _toggleDot(IconData icon, bool active) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(color: active ? Colors.white : Colors.transparent, shape: BoxShape.circle),
+      child: Icon(icon, size: 18, color: active ? const Color(0xFF5B34F0) : Colors.white),
+    );
+  }
+
+  IconData _badgeIcon(String name) {
+    switch (name) {
+      case 'message-square': return Icons.forum_rounded;
+      case 'star': return Icons.star_rounded;
+      case 'award': return Icons.workspace_premium_rounded;
+      case 'rocket': return Icons.rocket_launch_rounded;
+      case 'graduation-cap': return Icons.school_rounded;
+      case 'trophy': return Icons.emoji_events_rounded;
+      case 'medal': return Icons.military_tech_rounded;
+      case 'crown': return Icons.emoji_events_rounded;
+      case 'heart': return Icons.favorite_rounded;
+      case 'zap': return Icons.bolt_rounded;
+      case 'flame': return Icons.local_fire_department_rounded;
+      case 'shield': return Icons.shield_rounded;
+      case 'book-open': return Icons.menu_book_rounded;
+      case 'users': return Icons.groups_rounded;
+      default: return Icons.workspace_premium_rounded;
+    }
+  }
+
+  Color _badgeColor(String name) {
+    switch (name) {
+      case 'blue': return const Color(0xFF2F80ED);
+      case 'yellow': return const Color(0xFFFFB020);
+      case 'green': return const Color(0xFF22A06B);
+      case 'red': return const Color(0xFFEF4466);
+      case 'pink': return const Color(0xFFE5489B);
+      case 'orange': return const Color(0xFFF2711C);
+      case 'indigo': return const Color(0xFF4F46E5);
+      default: return const Color(0xFF7351FF);
+    }
+  }
+
+  Widget _badgeStack() {
+    final shown = _badges.take(3).toList();
+    return SizedBox(
+      width: 38 + (shown.length - 1) * 16.0,
+      height: 38,
+      child: Stack(
+        children: [
+          for (int i = 0; i < shown.length; i++)
+            Positioned(
+              left: i * 16.0,
+              child: Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: _badgeColor('${shown[i]['color']}'),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Icon(_badgeIcon('${shown[i]['icon']}'), color: Colors.white, size: 19),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showBadges(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(4)))),
+                const SizedBox(height: 16),
+                Text('My Badges', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
+                const SizedBox(height: 12),
+                if (_badges.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 30),
+                    child: Center(child: Text('No badges yet. Complete courses and join the community to earn them.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade500, height: 1.4))),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _badges.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) {
+                        final b = _badges[i];
+                        final c = _badgeColor('${b['color']}');
+                        return Row(
+                          children: [
+                            Container(
+                              width: 46, height: 46,
+                              decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
+                              child: Icon(_badgeIcon('${b['icon']}'), color: c, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${b['name']}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+                                  const SizedBox(height: 2),
+                                  Text('${b['description'] ?? ''}', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500, height: 1.3)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _headerIcon(IconData icon, VoidCallback onTap) {
@@ -387,13 +539,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               // ---- Header + identity ----
               Padding(
-                padding: const EdgeInsets.only(bottom: 44),
+                padding: const EdgeInsets.only(bottom: 40),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
                       width: double.infinity,
-                      padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 70),
+                      padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 52),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                       ),
@@ -402,9 +554,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Row(
                             children: [
-                              Image.asset('assets/kainuwa_academy_whitelogo.png', height: 34, fit: BoxFit.contain),
-                              const SizedBox(width: 10),
-                              const Expanded(child: Text('Kainuwa Academy', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
+                              _themeToggle(isDark, themeProvider),
+                              const Spacer(),
                               _headerIcon(Icons.settings_rounded, _openSettings),
                               const SizedBox(width: 8),
                               _headerIcon(Icons.notifications_none_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
@@ -469,39 +620,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ),
-                    // KAIDA points card overlapping the curve
+                    // KAIDA points card (left) + badges card (right), overlapping the hero
                     Positioned(
-                      left: 16, right: 16, bottom: -44,
-                      child: GestureDetector(
-                        onTap: () {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7B5CFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: [BoxShadow(color: const Color(0xFF4C2FE0).withOpacity(0.4), blurRadius: 18, offset: const Offset(0, 8))],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 50, height: 50,
-                                decoration: const BoxDecoration(color: Color(0xFFFFC21A), shape: BoxShape.circle),
-                                child: const Icon(Icons.monetization_on_rounded, color: Colors.white, size: 30),
+                      left: 16, right: 16, bottom: -40,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 11,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7B5CFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [BoxShadow(color: const Color(0xFF4C2FE0).withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
                               ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 38, height: 38,
+                                    decoration: const BoxDecoration(color: Color(0xFFFFC21A), shape: BoxShape.circle),
+                                    child: const Icon(Icons.monetization_on_rounded, color: Colors.white, size: 23),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('KAIDA Points', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(_walletBalance, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 10,
+                            child: GestureDetector(
+                              onTap: () => _showBadges(isDark),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.12), blurRadius: 14, offset: const Offset(0, 6))],
+                                ),
+                                child: Row(
                                   children: [
-                                    const Text('KAIDA Points', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 2),
-                                    Text(_walletBalance, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                                    _badges.isEmpty
+                                        ? Container(
+                                            width: 38, height: 38,
+                                            decoration: BoxDecoration(color: Colors.grey.withOpacity(0.15), shape: BoxShape.circle),
+                                            child: Icon(Icons.workspace_premium_rounded, color: Colors.grey.shade500, size: 22),
+                                          )
+                                        : _badgeStack(),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Badges', style: TextStyle(color: Colors.grey.shade500, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                                          Text(_badges.isEmpty ? 'None yet' : '${_badges.length} earned',
+                                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: _badges.isEmpty ? 14 : 17, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],
@@ -716,8 +912,6 @@ class _SettingsPage extends StatelessWidget {
                 _row(Icons.person_rounded, 'Edit Profile', 'Update your name and details', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()))),
                 Divider(height: 1, indent: 62, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                 _row(Icons.photo_camera_rounded, 'Change Profile Photo', 'Pick a new picture', onChangePhoto),
-                Divider(height: 1, indent: 62, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                _row(Icons.lock_rounded, 'Change Password', 'Keep your account safe', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()))),
               ]),
             ),
 
