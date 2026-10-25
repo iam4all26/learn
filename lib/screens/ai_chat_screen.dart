@@ -374,7 +374,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               children: [
                 Row(
                   children: [
-                    ClipRRect(borderRadius: BorderRadius.circular(9), child: Image.asset('assets/kainuwa_logo.png', width: 36, height: 36, fit: BoxFit.contain)),
+                    Image.asset('assets/kainuwa_academy_whitelogo.png', height: 34, fit: BoxFit.contain),
                     const SizedBox(width: 10),
                     const Expanded(child: Text('Kainuwa Academy', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
                     GestureDetector(
