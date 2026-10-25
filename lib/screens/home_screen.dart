@@ -915,21 +915,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(child: Text(item.instructorName, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  if (!isComingSoon && item.type == 'courses' && (item.lessonCount > 0 || item.avgRating > 0)) ...[
+                  if (!isComingSoon && item.type == 'courses' && true) ...[
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        if (item.lessonCount > 0) ...[
-                          Icon(Icons.play_lesson_rounded, size: 14, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Text('${item.lessonCount} Lessons', style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600)),
-                        ],
+                        Icon(Icons.play_lesson_rounded, size: 14, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Text(item.lessonCount > 0 ? '${item.lessonCount} Lessons' : 'Lessons soon', style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600)),
                         const Spacer(),
                         if (item.avgRating > 0) ...[
                           const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB020)),
                           const SizedBox(width: 2),
                           Text(item.avgRating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                        ],
+                        ] else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                            child: const Text('New', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w800)),
+                          ),
                       ],
                     ),
                   ],
