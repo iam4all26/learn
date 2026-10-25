@@ -666,7 +666,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> with SingleTicker
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset('assets/kainuwa_logo.png', width: 30, height: 30, fit: BoxFit.contain)),
+                                          Image.asset('assets/kainuwa_academy_whitelogo.png', height: 30, fit: BoxFit.contain),
                                           const SizedBox(width: 8),
                                           const Text('Kainuwa Academy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
                                         ],
