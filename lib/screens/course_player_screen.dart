@@ -33,6 +33,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
   ChewieController? _chewieController;
   Timer? _progressTimer;
 
+  final Set<String> _completed = {};
   Map<String, String> _downloadedLessons = {};
   Map<String, double> _downloadProgress = {};
   final Map<String, CancelToken> _cancelTokens = {};
@@ -80,6 +81,9 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
           _sections = parsedSections;
           _isLoading = false;
         });
+        for (final l in _allLessons) {
+          if ('${l['is_completed']}' == '1') _completed.add(l['id'].toString());
+        }
         if (_allLessons.isNotEmpty) _playLesson(_allLessons.first);
       }
     } else {
@@ -242,6 +246,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
               !_videoController!.value.isPlaying &&
               _videoController!.value.position >= _videoController!.value.duration && 
               _videoController!.value.position > Duration.zero) {
+            _markDone();
             _playNextLesson();
           }
         });
@@ -249,6 +254,12 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
         if (mounted) setState(() {});
       }
     }
+  }
+
+  void _markDone() {
+    if (_currentLesson == null) return;
+    final id = _currentLesson!['id'].toString();
+    if (_completed.add(id) && mounted) setState(() {});
   }
 
   void _playNextLesson() {
@@ -328,191 +339,268 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Dynamic theme checks to preserve layout while supporting dark mode
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final surfaceColor = isDark ? AppTheme.darkSurfaceColor : Colors.white;
+  // ---------------- new look ----------------
+  String _clean(String t) => t
+      .replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#039;', "'").replaceAll('&#39;', "'")
+      .replaceAll('&lt;', '<').replaceAll('&gt;', '>');
 
-    return Scaffold(
-      // Using AppTheme.backgroundColor directly looks bad in Dark Mode, letting Scaffold handle it based on Theme
-      body: _isLoading
-          ? Center(child: KaidaLoader())
-          : Column(
+  String _sectionOf(dynamic lesson) {
+    for (final sec in _sections) {
+      final items = sec['lessons'] ?? sec['items'] ?? [];
+      for (final l in items) {
+        if (l['id'].toString() == lesson['id'].toString()) return _clean('${sec['title'] ?? ''}');
+      }
+    }
+    return '';
+  }
+
+  Widget _header(bool isDark) {
+    final topPad = MediaQuery.of(context).padding.top;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(12, topPad + 8, 12, 12),
+      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), shape: BoxShape.circle), child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 19)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-                  width: double.infinity, 
-                  height: 250 + MediaQuery.of(context).padding.top, 
-                  color: Colors.black, // Player area always black
-                  child: Stack(
-                    children: [
-                      _currentLesson == null
-                          ? const Center(child: Text('Select a lesson', style: TextStyle(color: Colors.white)))
-                          : _buildPlayerArea(),
-                      Positioned(
-                        top: 10, left: 10,
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, shadows: [Shadow(blurRadius: 10, color: Colors.black)]),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: surfaceColor, // Dynamic card color
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10, offset: const Offset(0, 5))],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_currentLesson?['title'] ?? widget.courseTitle, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, height: 1.3, color: textColor)),
-                              const SizedBox(height: 16),
-                              
-                              // NEW: Prev and Next Buttons Row
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.primaryColor,
-                                        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.5)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                                      ),
-                                      icon: const Icon(Icons.skip_previous, size: 20),
-                                      label: const Text('Prev', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      onPressed: _playPrevLesson,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.primaryColor,
-                                        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.5)),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                                      ),
-                                      onPressed: _playNextLesson,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: const [
-                                          Text('Next', style: TextStyle(fontWeight: FontWeight.bold)),
-                                          SizedBox(width: 4),
-                                          Icon(Icons.skip_next, size: 20),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Download Entire Course Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primaryColor,
-                                    side: const BorderSide(color: AppTheme.primaryColor, width: 2),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-                                  ),
-                                  icon: const Icon(Icons.download_for_offline),
-                                  label: const Text('Download Entire Course', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                                  onPressed: _downloadEntireCourse,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text('Curriculum', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                        ),
-                        const SizedBox(height: 8),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _sections.length,
-                          itemBuilder: (context, index) {
-                            final section = _sections[index];
-                            List items = section['lessons'] ?? section['items'] ?? [];
-                            
-                            return Theme(
-                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                              child: ExpansionTile(
-                                initiallyExpanded: index == 0,
-                                title: Row(
-                                  children: [
-                                    Expanded(child: Text(section['title'] ?? 'Section', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor))),
-                                    IconButton(
-                                      icon: const Icon(Icons.drive_file_move_outline, color: AppTheme.primaryColor),
-                                      tooltip: 'Download Section',
-                                      onPressed: () => _downloadSection(section),
-                                    ),
-                                  ],
-                                ),
-                                children: items.map((lesson) {
-                                  final isPlaying = _currentLesson?['id'].toString() == lesson['id'].toString();
-                                  String type = lesson['content_type']?.toString() ?? lesson['lesson_type']?.toString() ?? 'video';
-                                  String url = lesson['content']?.toString() ?? lesson['video_url']?.toString() ?? '';
-                                  bool hasAccess = url.isNotEmpty;
-
-                                  return Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      // Dynamic container color for Dark Mode
-                                      color: isPlaying ? AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.08) : surfaceColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: isPlaying ? AppTheme.primaryColor.withOpacity(0.5) : (isDark ? Colors.grey.shade700 : Colors.grey.shade200)),
-                                    ),
-                                    child: ListTile(
-                                      leading: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          // Dynamic icon background
-                                          color: isPlaying ? AppTheme.primaryColor : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          isPlaying ? Icons.pause : (!hasAccess ? Icons.lock : (type == 'video' ? Icons.play_arrow : Icons.article)),
-                                          // Dynamic icon color
-                                          color: isPlaying ? Colors.white : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                                          size: 16,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        lesson['title'] ?? 'Lesson',
-                                        style: TextStyle(color: isPlaying ? AppTheme.primaryColor : textColor, fontWeight: isPlaying ? FontWeight.bold : FontWeight.w600, fontSize: 13),
-                                      ),
-                                      trailing: hasAccess ? _buildDownloadStateWidget(lesson, isDark) : null,
-                                      onTap: hasAccess ? () => _playLesson(lesson) : () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enroll to view this lesson.'), backgroundColor: Colors.orange)),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
-                ),
+                Text(_clean(widget.courseTitle), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16.5, fontWeight: FontWeight.w900)),
+                Text('${_completed.length}/${_allLessons.length} lessons completed', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)),
               ],
             ),
+          ),
+          GestureDetector(
+            onTap: _downloadEntireCourse,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(20)),
+              child: const Row(children: [
+                Icon(Icons.download_for_offline_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 6),
+                Text('Save all', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _playerBox(bool wide) {
+    final player = _currentLesson == null
+        ? const Center(child: Text('Select a lesson', style: TextStyle(color: Colors.white)))
+        : _buildPlayerArea();
+    return Container(color: Colors.black, child: wide ? AspectRatio(aspectRatio: 16 / 9, child: player) : AspectRatio(aspectRatio: 16 / 9, child: player));
+  }
+
+  Widget _lessonInfo(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF16123A);
+    final cur = _currentLesson;
+    final done = cur != null && _completed.contains(cur['id'].toString());
+    final idx = cur == null ? -1 : _allLessons.indexWhere((l) => l['id'].toString() == cur['id'].toString());
+
+    Widget navBtn(IconData icon, String label, VoidCallback? onTap, {bool right = false}) => Expanded(
+          child: OutlinedButton(
+            onPressed: onTap,
+            style: OutlinedButton.styleFrom(side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.5)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              if (!right) Icon(icon, size: 20, color: AppTheme.primaryColor),
+              if (!right) const SizedBox(width: 4),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryColor)),
+              if (right) const SizedBox(width: 4),
+              if (right) Icon(icon, size: 20, color: AppTheme.primaryColor),
+            ]),
+          ),
+        );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: isDark ? AppTheme.darkSurfaceColor : Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(_clean('${cur?['title'] ?? widget.courseTitle}'), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, height: 1.25, color: textColor)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 14, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (cur != null && _sectionOf(cur).isNotEmpty)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.folder_open_rounded, size: 16, color: Colors.grey.shade500),
+                  const SizedBox(width: 4),
+                  Flexible(child: Text(_sectionOf(cur), style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500, fontWeight: FontWeight.w600))),
+                ]),
+              if (done)
+                const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.check_circle_rounded, size: 17, color: Color(0xFF22A06B)),
+                  SizedBox(width: 4),
+                  Text('Completed', style: TextStyle(fontSize: 12.5, color: Color(0xFF22A06B), fontWeight: FontWeight.w800)),
+                ]),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(children: [
+            navBtn(Icons.skip_previous_rounded, 'Prev', idx > 0 ? _playPrevLesson : null),
+            const SizedBox(width: 10),
+            navBtn(Icons.skip_next_rounded, 'Next', (idx >= 0 && idx < _allLessons.length - 1) ? _playNextLesson : null, right: true),
+          ]),
+          if (cur != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _downloadLesson(cur),
+                style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade400), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                icon: Icon(Icons.download_rounded, size: 19, color: isDark ? Colors.white70 : Colors.black87),
+                label: Text('Download this lesson', style: TextStyle(fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black87)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _curriculum(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF16123A);
+    final surfaceColor = isDark ? AppTheme.darkSurfaceColor : Colors.white;
+    if (_sections.isEmpty) {
+      return Padding(padding: const EdgeInsets.all(30), child: Center(child: Text('No lessons yet.', style: TextStyle(color: Colors.grey.shade500))));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+          child: Text('Lessons', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: textColor)),
+        ),
+        ...List.generate(_sections.length, (index) {
+          final section = _sections[index];
+          final List items = section['lessons'] ?? section['items'] ?? [];
+          final doneCount = items.where((l) => _completed.contains(l['id'].toString())).length;
+          return Container(
+            margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            decoration: BoxDecoration(color: surfaceColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.05), blurRadius: 10, offset: const Offset(0, 3))]),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: index == 0,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+                iconColor: AppTheme.primaryColor,
+                title: Text(_clean('${section['title'] ?? 'Section'}'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: textColor)),
+                subtitle: Text('$doneCount/${items.length} lessons', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500)),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  GestureDetector(
+                    onTap: () => _downloadSection(section),
+                    child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.download_rounded, color: AppTheme.primaryColor, size: 21)),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded),
+                ]),
+                children: items.map<Widget>((lesson) {
+                  final isPlaying = _currentLesson?['id'].toString() == lesson['id'].toString();
+                  final type = lesson['content_type']?.toString() ?? lesson['lesson_type']?.toString() ?? 'video';
+                  final url = lesson['content']?.toString() ?? lesson['video_url']?.toString() ?? '';
+                  final hasAccess = url.isNotEmpty;
+                  final isDone = _completed.contains(lesson['id'].toString());
+
+                  Widget lead;
+                  if (isPlaying) {
+                    lead = const Icon(Icons.play_circle_fill_rounded, color: AppTheme.primaryColor, size: 28);
+                  } else if (isDone) {
+                    lead = const Icon(Icons.check_circle_rounded, color: Color(0xFF22A06B), size: 26);
+                  } else if (!hasAccess) {
+                    lead = Icon(Icons.lock_rounded, color: Colors.grey.shade500, size: 24);
+                  } else {
+                    lead = Icon(type == 'video' ? Icons.play_circle_outline_rounded : Icons.description_outlined, color: Colors.grey.shade600, size: 26);
+                  }
+
+                  return InkWell(
+                    onTap: hasAccess
+                        ? () => _playLesson(lesson)
+                        : () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enroll to view this lesson.'), backgroundColor: Colors.orange)),
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      decoration: BoxDecoration(color: isPlaying ? AppTheme.primaryColor.withOpacity(isDark ? 0.2 : 0.09) : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          lead,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${index + 1}.${items.indexOf(lesson) + 1}  ${_clean('${lesson['title'] ?? 'Lesson'}')}',
+                                style: TextStyle(fontSize: 13.5, fontWeight: isPlaying ? FontWeight.w800 : FontWeight.w600, color: isPlaying ? AppTheme.primaryColor : textColor)),
+                          ),
+                          if (hasAccess) _buildDownloadStateWidget(lesson, isDark),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FB);
+    final wide = MediaQuery.of(context).size.width >= 720; // tablet / landscape: lessons on the right
+
+    if (_isLoading) return Scaffold(backgroundColor: bg, body: const Center(child: KaidaLoader()));
+
+    if (wide) {
+      return Scaffold(
+        backgroundColor: bg,
+        body: Column(
+          children: [
+            _header(isDark),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: SingleChildScrollView(child: Column(children: [_playerBox(true), _lessonInfo(isDark)]))),
+                  Expanded(flex: 4, child: SingleChildScrollView(child: _curriculum(isDark))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: Column(
+        children: [
+          _header(isDark),
+          _playerBox(false),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _lessonInfo(isDark),
+                  _curriculum(isDark),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

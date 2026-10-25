@@ -14,33 +14,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Expanded descriptive texts
-  final List<Map<String, String>> _pages = [
+  // image = a file in assets/images (null = drawn icon illustration)
+  final List<Map<String, dynamic>> _pages = [
     {
-      'type': 'welcome',
-      'title': 'Kainuwa Academy',
-      'subtitle': '',
-    },
-    {
-      'type': 'image',
       'image': 'assets/images/onboarding_1.png',
-      'title_black': 'Expert-Led ',
-      'title_purple': 'Courses',
-      'subtitle': 'Master high-income digital skills tailored for the African context. Access premium, expert-led courses crafted meticulously in both English and professional Hausa to accelerate your tech career.',
+      'black': 'Learn Digital Skills ',
+      'accent': 'in Hausa',
+      'subtitle': 'High-quality courses and practical skills you can learn on your phone, anywhere, anytime.',
     },
     {
-      'type': 'image',
       'image': 'assets/images/onboarding_2.png',
-      'title_black': 'Earn ',
-      'title_purple': 'Kaida Tokens',
-      'subtitle': 'Experience education that pays you back. Get rewarded with official KAIDA TOKENS for your progress, complete learning milestones, and unlock exclusive platform benefits as you grow.',
+      'black': 'A Wide Range of ',
+      'accent': 'Skills',
+      'subtitle': 'Choose from Graphic Design, Web Development, Cryptocurrency, Digital Marketing, AI Tools and more.',
     },
     {
-      'type': 'image',
       'image': 'assets/images/onboarding_3.png',
-      'title_black': 'Join the ',
-      'title_purple': 'Community',
-      'subtitle': 'You are never learning alone. Connect with thousands of ambitious youths, share ideas, access premium mentorship, and build your professional network in our interactive digital community.',
+      'black': 'Learn at ',
+      'accent': 'Your Own Pace',
+      'subtitle': 'Watch videos, read guides, download files and practise, all inside your phone.',
+    },
+    {
+      'image': null,
+      'black': 'Build a ',
+      'accent': 'Brighter Future',
+      'subtitle': 'Get digital skills for work, business or building your own thing in Nigeria and Africa.',
     },
   ];
 
@@ -48,210 +46,182 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('first_time_user', false);
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+    }
+  }
+
+  void _next() {
+    if (_currentPage == _pages.length - 1) {
+      _completeOnboarding();
+    } else {
+      _pageController.nextPage(duration: const Duration(milliseconds: 380), curve: Curves.easeInOut);
+    }
+  }
+
+  Widget _hero(Map<String, dynamic> page) {
+    final img = page['image'] as String?;
+    if (img != null) {
+      return Image.asset(
+        img,
+        fit: BoxFit.contain,
+        alignment: Alignment.bottomCenter,
+        errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 120, color: Colors.white54),
       );
     }
+    // Last page: drawn illustration
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(width: 230, height: 230, decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), shape: BoxShape.circle)),
+        const Icon(Icons.emoji_events_rounded, size: 120, color: Color(0xFFFFC21A)),
+        Positioned(right: 40, top: 40, child: _chipIcon(Icons.trending_up_rounded, const Color(0xFF7B5CFF))),
+        Positioned(left: 40, bottom: 60, child: _chipIcon(Icons.workspace_premium_rounded, const Color(0xFFFFC21A), dark: true)),
+        Positioned(right: 50, bottom: 40, child: _chipIcon(Icons.work_rounded, const Color(0xFF4C2FE0))),
+      ],
+    );
+  }
+
+  Widget _chipIcon(IconData icon, Color bg, {bool dark = false}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: Icon(icon, color: dark ? const Color(0xFF3A22C4) : Colors.white, size: 28),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    Color bgColor = _currentPage == 0 
-        ? AppTheme.primaryColor 
-        : (isDark ? AppTheme.darkBackgroundColor : Colors.white);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topPad = MediaQuery.of(context).padding.top;
+    final last = _currentPage == _pages.length - 1;
+    final sheetColor = isDark ? AppTheme.darkSurfaceColor : Colors.white;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // 1. PAGE CONTENT
-            PageView.builder(
+      backgroundColor: const Color(0xFF3A22C4),
+      body: Stack(
+        children: [
+          // purple gradient background
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+            ),
+          ),
+          // hero images (swipe)
+          Positioned(
+            left: 0, right: 0, top: topPad + 70, bottom: 330,
+            child: PageView.builder(
               controller: _pageController,
               itemCount: _pages.length,
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
-              itemBuilder: (context, index) {
-                final page = _pages[index];
-                
-                if (page['type'] == 'welcome') {
-                  return Center(
-                    child: Text(
-                      page['title']!,
-                      style: const TextStyle(
-                        fontSize: 34, 
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -1.0,
-                      ),
+              onPageChanged: (p) => setState(() => _currentPage = p),
+              itemBuilder: (_, i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: _hero(_pages[i])),
+            ),
+          ),
+          // logo + skip
+          Positioned(
+            left: 20, right: 20, top: topPad + 12,
+            child: Row(
+              children: [
+                Image.asset('assets/kainuwa_academy_whitelogo.png', height: 44, fit: BoxFit.contain),
+                const Spacer(),
+                if (!last)
+                  GestureDetector(
+                    onTap: _completeOnboarding,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), borderRadius: BorderRadius.circular(20)),
+                      child: const Text('Skip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
                     ),
-                  );
-                } else {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                  ),
+              ],
+            ),
+          ),
+          // white bottom sheet
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: Container(
+              padding: EdgeInsets.fromLTRB(24, 28, 24, MediaQuery.of(context).padding.bottom + 22),
+              decoration: BoxDecoration(color: sheetColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(34))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      key: ValueKey(_currentPage),
                       children: [
-                        ShaderMask(
-                          shaderCallback: (Rect bounds) {
-                            return LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.white, Colors.white.withOpacity(0.0)],
-                              stops: const [0.75, 1.0], 
-                            ).createShader(bounds);
-                          },
-                          blendMode: BlendMode.dstIn,
-                          child: Image.asset(
-                            page['image']!,
-                            height: 330,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 100),
-                          ),
-                        ),
-                        const SizedBox(height: 35),
-                        
                         RichText(
                           textAlign: TextAlign.center,
                           text: TextSpan(
-                            style: TextStyle(
-                              fontSize: 28, 
-                              fontWeight: FontWeight.w900,
-                              color: isDark ? Colors.white : Colors.black, 
-                            ),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.5, color: isDark ? Colors.white : const Color(0xFF16123A)),
                             children: [
-                              TextSpan(text: page['title_black']),
-                              TextSpan(
-                                text: page['title_purple'],
-                                style: const TextStyle(color: AppTheme.primaryColor),
-                              ),
+                              TextSpan(text: _pages[_currentPage]['black'] as String),
+                              TextSpan(text: _pages[_currentPage]['accent'] as String, style: const TextStyle(color: AppTheme.primaryColor)),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        
-                        Text(
-                          page['subtitle']!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16, 
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.grey.shade300 : Colors.black87, 
-                            height: 1.6, 
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          height: 72,
+                          child: Text(
+                            _pages[_currentPage]['subtitle'] as String,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 15, height: 1.5, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
                           ),
                         ),
                       ],
                     ),
-                  );
-                }
-              },
-            ),
-
-            // 2. TOP RIGHT SKIP BUTTON (HIDDEN ON PURPLE SCREEN)
-            if (_currentPage > 0 && _currentPage < _pages.length - 1)
-              Positioned(
-                top: 10,
-                right: 20,
-                child: TextButton(
-                  onPressed: _completeOnboarding,
-                  child: Text(
-                    'Skip',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.black, 
-                    ),
                   ),
-                ),
-              ),
-
-            // 3. BOTTOM NAVIGATION (Dots + Circular Progress Button)
-            Positioned(
-              bottom: 40,
-              left: 30,
-              right: 30,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // DOTS
+                  const SizedBox(height: 14),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
                       _pages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.only(right: 8),
+                      (i) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
                         height: 8,
-                        width: _currentPage == index ? 24 : 8,
-                        decoration: BoxDecoration(
-                          color: _currentPage == 0
-                              ? (_currentPage == index ? Colors.white : Colors.white.withOpacity(0.4))
-                              : (_currentPage == index
-                                  ? AppTheme.primaryColor
-                                  : (isDark ? Colors.grey.shade700 : Colors.grey.shade300)),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                        width: _currentPage == i ? 22 : 8,
+                        decoration: BoxDecoration(color: _currentPage == i ? AppTheme.primaryColor : (isDark ? Colors.grey.shade700 : Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
                       ),
                     ),
                   ),
-
-                  // CIRCULAR PROGRESS ICON BUTTON
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 65,
-                        height: 65,
-                        child: CircularProgressIndicator(
-                          value: (_currentPage + 1) / _pages.length,
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              _currentPage == 0 ? Colors.white : AppTheme.primaryColor),
-                          backgroundColor: _currentPage == 0
-                              ? Colors.white.withOpacity(0.2)
-                              : (isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                        ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _next,
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_currentPage == 0 || last ? 'Get Started' : 'Next', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                        ],
                       ),
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: _currentPage == 0 ? Colors.white : AppTheme.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            _currentPage == _pages.length - 1 
-                                ? Icons.check 
-                                : Icons.arrow_forward_ios_rounded,
-                            color: _currentPage == 0 ? AppTheme.primaryColor : Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            if (_currentPage == _pages.length - 1) {
-                              _completeOnboarding();
-                            } else {
-                              _pageController.nextPage(
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                    ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 38,
+                    child: last
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('I already have an account  ', style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5)),
+                              GestureDetector(
+                                onTap: _completeOnboarding,
+                                child: const Text('Sign In', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 14)),
+                              ),
+                            ],
+                          )
+                        : null,
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

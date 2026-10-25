@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
+import '../widgets/page_header.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
 
@@ -20,6 +21,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
   bool _isLoading = true;
   List<CatalogItem> _wishlistedItems = [];
   int? _userId;
+  int _tab = 0; // 0 All, 1 Courses, 2 Products
 
   @override
   void initState() {
@@ -72,60 +74,73 @@ class _WishlistScreenState extends State<WishlistScreen> {
         Uri.parse(ApiConfig.toggleWishlist),
         body: {'user_id': _userId.toString(), 'item_id': itemId.toString(), 'item_type': type == 'products' ? 'product' : 'course'}
       );
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed from wishlist'), duration: Duration(seconds: 1)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed from wishlist'), duration: Duration(seconds: 1)));
     } catch (e) {
       _fetchWishlist(); 
     }
   }
 
+  List<CatalogItem> get _visible {
+    if (_tab == 1) return _wishlistedItems.where((i) => !i.type.contains('products')).toList();
+    if (_tab == 2) return _wishlistedItems.where((i) => i.type.contains('products')).toList();
+    return _wishlistedItems;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final courses = _wishlistedItems.where((i) => !i.type.contains('products')).length;
+    final products = _wishlistedItems.length - courses;
+    final shown = _visible;
+
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text('My Wishlist', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? Colors.white : Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: KaidaLoader())
-            : _wishlistedItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.favorite_outline_rounded, size: 80, color: Colors.grey.shade300),
-                        const SizedBox(height: 16),
-                        Text('Wishlist Empty', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                        const SizedBox(height: 8),
-                        Text('Items you favorite will appear here.', style: TextStyle(color: Colors.grey.shade500)),
-                      ],
-                    ),
-                  )
+      backgroundColor: isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FB),
+      body: Column(
+        children: [
+          PageHeader(
+            title: 'My Wishlist',
+            subtitle: _wishlistedItems.isEmpty ? 'Save courses and products you like' : '${_wishlistedItems.length} saved item${_wishlistedItems.length == 1 ? '' : 's'}',
+            illustration: Icons.favorite_rounded,
+            bottom: HeaderTabs(
+              labels: ['All (${_wishlistedItems.length})', 'Courses ($courses)', 'Products ($products)'],
+              selected: _tab,
+              onChanged: (i) => setState(() => _tab = i),
+            ),
+            bottomPadding: 16,
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: KaidaLoader())
                 : RefreshIndicator(
                     color: AppTheme.primaryColor,
                     onRefresh: _fetchWishlist,
-                    child: GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 16,
-                        mainAxisExtent: 260,
-                      ),
-                      itemCount: _wishlistedItems.length,
-                      itemBuilder: (context, index) => _buildGridCard(_wishlistedItems[index], isDark),
-                    ),
+                    child: shown.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              const SizedBox(height: 90),
+                              Icon(Icons.favorite_outline_rounded, size: 80, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Center(child: Text('Wishlist Empty', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black))),
+                              const SizedBox(height: 8),
+                              Center(child: Text('Items you favorite will appear here.', style: TextStyle(color: Colors.grey.shade500))),
+                            ],
+                          )
+                        : GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 16,
+                              mainAxisExtent: 260,
+                            ),
+                            itemCount: shown.length,
+                            itemBuilder: (context, index) => _buildGridCard(shown[index], isDark),
+                          ),
                   ),
+          ),
+        ],
       ),
     );
   }
