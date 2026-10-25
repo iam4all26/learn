@@ -403,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Row(
                             children: [
-                              ClipRRect(borderRadius: BorderRadius.circular(9), child: Image.asset('assets/kainuwa_logo.png', width: 36, height: 36, fit: BoxFit.contain)),
+                              Image.asset('assets/kainuwa_academy_whitelogo.png', height: 34, fit: BoxFit.contain),
                               const SizedBox(width: 10),
                               const Expanded(child: Text('Kainuwa Academy', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
                               _headerIcon(Icons.settings_rounded, _openSettings),
@@ -749,7 +749,7 @@ class _SettingsPage extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset('assets/kainuwa_logo.png', width: 32, height: 32, fit: BoxFit.contain)),
+                  Image.asset('assets/kainuwa_academy_whitelogo.png', height: 30, fit: BoxFit.contain, color: const Color(0xFF5B34F0)),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
