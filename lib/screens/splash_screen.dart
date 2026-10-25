@@ -161,17 +161,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(34),
-                    boxShadow: [
-                      BoxShadow(color: Colors.white.withOpacity(0.22), blurRadius: 40, spreadRadius: 2),
-                      BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 24, offset: const Offset(0, 12)),
+                SizedBox(
+                  width: 210, height: 190,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 210, height: 210,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(colors: [Colors.white.withOpacity(0.22), Colors.white.withOpacity(0.0)]),
+                        ),
+                      ),
+                      Image.asset('assets/kainuwa_academy_whitelogo.png', height: 128, fit: BoxFit.contain),
                     ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(34),
-                    child: Image.asset('assets/kainuwa_logo.png', width: 128, height: 128, fit: BoxFit.contain),
                   ),
                 ),
                 const SizedBox(height: 28),
