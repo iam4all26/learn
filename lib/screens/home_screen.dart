@@ -392,10 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
             top: topPad + 10, left: 16, right: 16,
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset('assets/kainuwa_logo.png', width: 38, height: 38, fit: BoxFit.contain),
-                ),
+                Image.asset('assets/kainuwa_academy_whitelogo.png', height: 36, fit: BoxFit.contain),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text('Kainuwa Academy', maxLines: 1, overflow: TextOverflow.ellipsis,
