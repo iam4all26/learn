@@ -8,6 +8,8 @@ import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import '../utils/kaida_alert.dart';
 import 'item_details_screen.dart';
+import '../widgets/kaida_empty_state.dart';
+import 'categories_screen.dart';
 
 class CatalogItem {
   final int id;
@@ -450,17 +452,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
             
             Expanded(
               child: _isLoading 
-                ? const Center(child: KaidaLoader())
+                ? const KaidaSkeletonList(count: 5)
                 : _filteredItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
-                            const SizedBox(height: 16),
-                            Text('No items found', style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                    ? KaidaEmptyState(
+                        kind: isProductMode ? KaidaEmptyKind.products : KaidaEmptyKind.courses,
+                        primaryLabel: isProductMode ? 'Browse products' : 'Browse all courses',
+                        onPrimary: () { _searchController.clear(); },
+                        secondaryLabel: isProductMode ? 'Browse categories' : 'Browse all categories',
+                        secondaryAsLink: !isProductMode,
+                        onSecondary: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
                       )
                     : RefreshIndicator(
                         color: AppTheme.primaryColor,

@@ -8,6 +8,8 @@ import '../widgets/kaida_loader.dart';
 import '../widgets/page_header.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
+import '../widgets/kaida_empty_state.dart';
+import 'categories_screen.dart';
 
 /// Shop: digital and physical products (native screen, uses catalog.php?action=products).
 class ExploreScreen extends StatefulWidget {
@@ -165,23 +167,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                         ),
                         if (_error)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 60),
-                            child: Column(children: [
-                              Icon(Icons.cloud_off_rounded, size: 60, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text('Could not load the shop.', style: TextStyle(color: Colors.grey.shade500)),
-                              TextButton(onPressed: _load, child: const Text('Try again')),
-                            ]),
-                          )
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.6, child: KaidaErrorState(onRetry: _load))
                         else if (filtered.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 60),
-                            child: Column(children: [
-                              Icon(Icons.shopping_bag_outlined, size: 60, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(_items.isEmpty ? 'No products yet.' : 'No products match your search.', style: TextStyle(color: Colors.grey.shade500)),
-                            ]),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: KaidaEmptyState(
+                              kind: KaidaEmptyKind.products,
+                              primaryLabel: 'Browse products',
+                              onPrimary: () => setState(() { _query = ''; _category = 'All'; _kind = 'All'; }),
+                              secondaryLabel: 'Browse categories',
+                              onSecondary: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+                            ),
                           )
                         else if (filtering) ...[
                           _title('Results (${filtered.length})', isDark),

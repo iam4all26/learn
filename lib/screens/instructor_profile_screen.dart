@@ -7,6 +7,7 @@ import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
+import '../widgets/kaida_empty_state.dart';
 
 class InstructorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> instructor;
@@ -302,7 +303,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen> {
 
   Widget _coursesTab(bool isDark) {
     if (_courses.isEmpty) {
-      return Padding(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: Text('No active courses yet.', style: TextStyle(color: Colors.grey.shade500))));
+      return const SizedBox(height: 330, child: KaidaEmptyState(kind: KaidaEmptyKind.courses, title: 'No courses here yet', message: 'This instructor has no active courses at the moment.'));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _sectionTitle(Icons.menu_book_rounded, 'Instructor Courses', isDark),

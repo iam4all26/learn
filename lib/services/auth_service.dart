@@ -39,9 +39,9 @@ class AuthService {
         } catch (_) {}
         return {'success': false, 'message': 'Too many attempts. Please wait a few minutes.'};
       }
-      return {'success': false, 'message': 'Server error'};
+      return {'success': false, 'message': 'Our servers are having a moment. Please try again shortly.'};
     } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
+      return {'success': false, 'message': 'No internet connection. Please check your network and try again.'};
     }
   }
 
@@ -90,9 +90,9 @@ class AuthService {
         }
       }
       await _googleSignIn.signOut();
-      return {'success': false, 'message': 'Server error communicating with API'};
+      return {'success': false, 'message': 'Our servers are having a moment. Please try again shortly.'};
     } catch (e) {
-      return {'success': false, 'message': 'Connection error: $e'};
+      return {'success': false, 'message': 'No internet connection. Please check your network and try again.'};
     }
   }
 
@@ -114,9 +114,9 @@ class AuthService {
       if (response.statusCode == 429) {
         return {'success': false, 'message': 'Too many sign-up attempts. Please try again later.'};
       }
-      return {'success': false, 'message': 'Server error'};
+      return {'success': false, 'message': 'Our servers are having a moment. Please try again shortly.'};
     } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
+      return {'success': false, 'message': 'No internet connection. Please check your network and try again.'};
     }
   }
 
@@ -130,9 +130,9 @@ class AuthService {
         final data = json.decode(response.body);
         return {'success': data['status'] == 'success', 'message': data['message'] ?? 'Error'};
       }
-      return {'success': false, 'message': 'Server error'};
+      return {'success': false, 'message': 'Our servers are having a moment. Please try again shortly.'};
     } catch (e) {
-      return {'success': false, 'message': 'Connection error'};
+      return {'success': false, 'message': 'No internet connection. Please check your network and try again.'};
     }
   }
 

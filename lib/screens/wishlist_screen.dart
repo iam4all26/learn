@@ -9,6 +9,9 @@ import '../widgets/kaida_loader.dart';
 import '../widgets/page_header.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
+import '../widgets/kaida_empty_state.dart';
+import 'main_layout.dart';
+import 'explore_screen.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({Key? key}) : super(key: key);
@@ -110,7 +113,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: KaidaLoader())
+                ? const KaidaSkeletonList()
                 : RefreshIndicator(
                     color: AppTheme.primaryColor,
                     onRefresh: _fetchWishlist,
@@ -118,12 +121,16 @@ class _WishlistScreenState extends State<WishlistScreen> {
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              const SizedBox(height: 90),
-                              Icon(Icons.favorite_outline_rounded, size: 80, color: Colors.grey.shade300),
-                              const SizedBox(height: 16),
-                              Center(child: Text('Wishlist Empty', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black))),
-                              const SizedBox(height: 8),
-                              Center(child: Text('Items you favorite will appear here.', style: TextStyle(color: Colors.grey.shade500))),
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.62,
+                                child: KaidaEmptyState(
+                                  kind: KaidaEmptyKind.wishlist,
+                                  primaryLabel: 'Browse courses',
+                                  onPrimary: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout(initialIndex: 1)), (r) => false),
+                                  secondaryLabel: 'Browse products',
+                                  onSecondary: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())),
+                                ),
+                              ),
                             ],
                           )
                         : GridView.builder(

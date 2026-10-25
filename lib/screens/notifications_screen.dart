@@ -13,6 +13,7 @@ import 'course_player_screen.dart';
 import 'main_layout.dart';
 import 'catalog_screen.dart'; 
 import 'item_details_screen.dart'; 
+import '../widgets/kaida_empty_state.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -297,12 +298,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              const SizedBox(height: 90),
-                              Icon(Icons.notifications_off_rounded, size: 80, color: Colors.grey.shade300),
-                              const SizedBox(height: 16),
-                              Center(child: Text('All Caught Up!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black))),
-                              const SizedBox(height: 8),
-                              Center(child: Text('No notifications here.', style: TextStyle(color: Colors.grey.shade500))),
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.6,
+                                child: const KaidaEmptyState(kind: KaidaEmptyKind.notifications),
+                              ),
                             ],
                           )
                         : ListView.builder(

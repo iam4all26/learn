@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
+import '../utils/kaida_alert.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
@@ -206,7 +207,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: error ? Colors.red : Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ? KaidaAlert.friendly(msg) : msg), backgroundColor: error ? Colors.red : Colors.green));
   }
 
   Future<void> _saveProfile() async {

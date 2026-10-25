@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import 'catalog_screen.dart';
+import '../widgets/kaida_empty_state.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({Key? key}) : super(key: key);
@@ -82,7 +83,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       body: _isLoading
           ? const Center(child: KaidaLoader())
           : _categories.isEmpty
-              ? Center(child: Text("No categories found.", style: TextStyle(color: Colors.grey.shade500)))
+              ? const KaidaEmptyState(kind: KaidaEmptyKind.generic, title: 'No categories yet', message: 'Categories will appear here soon.')
               : GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

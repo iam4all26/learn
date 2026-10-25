@@ -8,6 +8,8 @@ import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import '../widgets/page_header.dart';
 import '../utils/kaida_alert.dart';
+import '../widgets/kaida_empty_state.dart';
+import 'explore_screen.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({Key? key}) : super(key: key);
@@ -155,7 +157,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: KaidaLoader())
+                ? const KaidaSkeletonList()
                 : RefreshIndicator(
                     color: AppTheme.primaryColor,
                     onRefresh: _fetchDownloads,
@@ -199,14 +201,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         ),
                         const SizedBox(height: 14),
                         if (_visible.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 60),
-                            child: Column(
-                              children: [
-                                Icon(Icons.folder_open_rounded, size: 70, color: Colors.grey.shade300),
-                                const SizedBox(height: 12),
-                                Text(_downloads.isEmpty ? 'You have no digital downloads yet.' : 'Nothing found here.', style: TextStyle(color: Colors.grey.shade500, fontSize: 15)),
-                              ],
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.5,
+                            child: KaidaEmptyState(
+                              kind: _downloads.isEmpty ? KaidaEmptyKind.downloads : KaidaEmptyKind.search,
+                              primaryLabel: _downloads.isEmpty ? 'Browse products' : null,
+                              onPrimary: _downloads.isEmpty ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())) : null,
                             ),
                           )
                         else

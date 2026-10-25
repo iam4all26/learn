@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import '../widgets/page_header.dart';
+import '../widgets/kaida_empty_state.dart';
 
 class HelpCenterScreen extends StatefulWidget {
   const HelpCenterScreen({Key? key}) : super(key: key);
@@ -171,7 +172,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         if (displayed.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: Text(_faqs.isEmpty ? 'No FAQs available yet.' : 'No results found.', style: TextStyle(color: Colors.grey.shade500))),
+            child: KaidaEmptyState(kind: _faqs.isEmpty ? KaidaEmptyKind.generic : KaidaEmptyKind.search, title: _faqs.isEmpty ? 'No FAQs yet' : null, message: _faqs.isEmpty ? 'Answers to common questions will appear here.' : null),
           )
         else
           for (int c = 0; c < displayed.length; c++) ...[

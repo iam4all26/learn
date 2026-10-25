@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import '../widgets/page_header.dart';
+import '../utils/kaida_alert.dart';
 
 /// Change Password screen (the only place in the app to change the password).
 class SecurityScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   bool get _allMet => _has8 && _hasUpper && _hasLower && _hasNumber && _hasSymbol;
 
   void _snack(String msg, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: error ? Colors.red : Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ? KaidaAlert.friendly(msg) : msg), backgroundColor: error ? Colors.red : Colors.green));
   }
 
   Future<void> _submit() async {

@@ -15,6 +15,7 @@ import '../utils/kaida_alert.dart';
 import 'catalog_screen.dart';
 import 'course_player_screen.dart';
 import 'main_layout.dart';
+import '../widgets/kaida_empty_state.dart';
 
 class ItemDetailsScreen extends StatefulWidget {
   final CatalogItem item;
@@ -1448,7 +1449,7 @@ class _CheckoutWebViewScreenState extends State<CheckoutWebViewScreen> {
             WebViewWidget(controller: _controller),
             if (_isLoading && !_hasError) Container(color: isDark ? AppTheme.darkBackgroundColor : Colors.white, child: const Center(child: KaidaLoader())),
             if (_hasError)
-              Container(color: isDark ? AppTheme.darkBackgroundColor : Colors.white, child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.cloud_off_rounded, size: 80, color: Colors.grey), const SizedBox(height: 16), Text('Connection Failed', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)), const SizedBox(height: 24), ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () { setState(() { _hasError = false; _isLoading = true; }); _controller.loadRequest(Uri.parse(widget.url)); }, icon: const Icon(Icons.refresh_rounded, color: Colors.white), label: const Text('Try Again', style: TextStyle(color: Colors.white)))]))),
+              Container(color: isDark ? AppTheme.darkBackgroundColor : Colors.white, child: KaidaErrorState(onRetry: () { setState(() { _hasError = false; _isLoading = true; }); _controller.loadRequest(Uri.parse(widget.url)); })),
           ],
         ),
       ),

@@ -8,6 +8,8 @@ import '../config/api_config.dart';
 import '../config/app_theme.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
+import '../widgets/kaida_loader.dart';
+import '../utils/kaida_alert.dart';
 
 class ChatMessage {
   final String text;
@@ -217,7 +219,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           String errText = "Could not reach Kainuwa AI. Please check your internet connection.";
           String cleanError = e.toString().replaceAll('Exception: ', '').trim();
           // Show the server's own message (for example "The AI is not available right now ...") instead of hiding it
-          if (cleanError.isNotEmpty && cleanError != 'Server Error' && !cleanError.contains('SocketException') && !cleanError.contains('ClientException')) {
+          if (cleanError.isNotEmpty && cleanError != 'Server Error' && !KaidaAlert.isTechnical(cleanError) && cleanError.length < 160) {
               errText = cleanError;
           } else if (cleanError == 'Server Error') {
               errText = "Kainuwa AI had a server problem. Please try again.";
@@ -309,19 +311,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   child: Column(children: _messages.map((m) => _buildMessageBubble(m, isDark)).toList()),
                 ),
                 if (_isTyping)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: Row(
-                      children: [
-                        _robotAvatar(34),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(color: isDark ? AppTheme.darkSurfaceColor : const Color(0xFFEDEBF7), borderRadius: BorderRadius.circular(18)),
-                          child: Text('Kainuwa AI is thinking...', style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
-                        ),
-                      ],
-                    ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Align(alignment: Alignment.centerLeft, child: KaidaTypingLoader()),
                   ),
                 if (showSuggestions)
                   Padding(
@@ -543,45 +535,152 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
+  String _sessionGroup(dynamic raw) {
+    final d = DateTime.tryParse((raw ?? '').toString());
+    if (d == null) return 'Earlier';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final diff = today.difference(day).inDays;
+    if (diff <= 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return 'Previous 7 days';
+    return 'Earlier';
+  }
+
+  Future<void> _confirmDelete(int id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text('Delete this chat?', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('This conversation will be removed permanently.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Color(0xFFE5484D), fontWeight: FontWeight.w800))),
+        ],
+      ),
+    );
+    if (ok == true) _deleteSession(id);
+  }
+
   Widget _buildHistoryDrawer(bool isDark) {
-    return Drawer(
-      backgroundColor: isDark ? AppTheme.darkSurfaceColor : Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              width: double.infinity,
-              color: Colors.transparent,
-              child: Text('Chat History', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
-              title: const Text('Start New Chat', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-              onTap: _startNewChat,
-            ),
-            const Divider(),
-            Expanded(
-              child: _sessions.isEmpty
-                ? Center(child: Text('No previous chats', style: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey)))
-                : ListView.builder(
-                    itemCount: _sessions.length,
-                    itemBuilder: (context, index) {
-                      final session = _sessions[index];
-                      return ListTile(
-                        leading: Icon(Icons.chat_bubble_outline, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                        title: Text(session['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-                        onTap: () => _loadHistory(int.parse(session['id'].toString())),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red, size: 20),
-                          onPressed: () => _deleteSession(int.parse(session['id'].toString())),
-                        ),
-                      );
-                    },
+    final bg = isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FB);
+    final card = isDark ? AppTheme.darkSurfaceColor : Colors.white;
+    final ink = isDark ? Colors.white : const Color(0xFF16123A);
+
+    // group sessions (list is already newest first)
+    final List<Widget> rows = [];
+    String? last;
+    for (final session in _sessions) {
+      final g = _sessionGroup(session['created_at']);
+      if (g != last) {
+        rows.add(Padding(
+          padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+          child: Text(g.toUpperCase(), style: TextStyle(fontSize: 11.5, letterSpacing: 0.8, fontWeight: FontWeight.w800, color: Colors.grey.shade500)),
+        ));
+        last = g;
+      }
+      final id = int.tryParse(session['id'].toString()) ?? 0;
+      final active = id == _currentSessionId;
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: active ? AppTheme.primaryColor.withOpacity(isDark ? 0.22 : 0.10) : card,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _loadHistory(id),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: active ? AppTheme.primaryColor.withOpacity(0.5) : Colors.transparent)),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.chat_bubble_rounded, color: AppTheme.primaryColor, size: 19),
                   ),
-            )
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('${session['title'] ?? 'New chat'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.25, color: ink)),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.delete_outline_rounded, color: Colors.grey.shade500, size: 20),
+                    onPressed: () => _confirmDelete(id),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
+      ));
+    }
+
+    return Drawer(
+      backgroundColor: bg,
+      width: MediaQuery.of(context).size.width * 0.84,
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(18, MediaQuery.of(context).padding.top + 18, 18, 20),
+            decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.history_rounded, color: Color(0xFFFFC21A), size: 24),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Chat History', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900))),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(width: 32, height: 32, decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white, size: 18)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(_sessions.isEmpty ? 'Your conversations will show here' : '${_sessions.length} conversation${_sessions.length == 1 ? '' : 's'}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _startNewChat,
+                    icon: const Icon(Icons.add_rounded, color: Color(0xFF3A22C4)),
+                    label: const Text('New Chat', style: TextStyle(color: Color(0xFF3A22C4), fontWeight: FontWeight.w900, fontSize: 15.5)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _sessions.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 92, height: 92, decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.10), shape: BoxShape.circle), child: const Icon(Icons.forum_rounded, color: AppTheme.primaryColor, size: 44)),
+                          const SizedBox(height: 18),
+                          Text('No chats yet', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: ink)),
+                          const SizedBox(height: 6),
+                          Text('Ask Kainuwa AI anything and your conversation will be saved here.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.grey.shade500)),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView(
+                    padding: EdgeInsets.fromLTRB(14, 0, 14, MediaQuery.of(context).padding.bottom + 16),
+                    children: rows,
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -676,8 +775,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Widget _buildInputArea(bool isDark) {
+    // The raised AI button of the bottom bar overlaps ~36px of this screen, so keep the field above it.
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 48),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, -4))],

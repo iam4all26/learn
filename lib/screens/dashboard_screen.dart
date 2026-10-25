@@ -12,6 +12,8 @@ import 'catalog_screen.dart';
 import 'item_details_screen.dart';
 import 'notifications_screen.dart';
 import 'downloads_screen.dart';
+import '../widgets/kaida_empty_state.dart';
+import 'categories_screen.dart';
 
 /// "My Learning": In Progress / Completed / Downloaded.
 class DashboardScreen extends StatefulWidget {
@@ -161,7 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           Expanded(
             child: _isLoading
-                ? const Center(child: KaidaLoader())
+                ? const KaidaSkeletonList()
                 : RefreshIndicator(
                     color: AppTheme.primaryColor,
                     onRefresh: _load,
@@ -182,46 +184,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _emptyState(bool isDark) {
     final noneAtAll = _searchQuery.isEmpty;
-    String title, sub;
+    final go = () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout(initialIndex: 1)), (r) => false);
+    KaidaEmptyKind kind = KaidaEmptyKind.courses;
+    String? title, sub;
     if (!noneAtAll) {
-      title = 'Nothing found'; sub = 'Try different search words.';
+      kind = KaidaEmptyKind.search;
     } else if (_tab == 0) {
       title = _myCourses.isEmpty ? 'Ready to start learning?' : 'No courses in progress';
       sub = _myCourses.isEmpty ? 'Explore the catalog to find your first course.' : 'Pick a new course to keep learning.';
     } else if (_tab == 1) {
       title = 'No completed courses yet'; sub = 'Finish a course and it will show up here.';
     } else {
-      title = 'No downloads yet'; sub = 'Digital products you buy will show up here.';
+      kind = KaidaEmptyKind.downloads;
     }
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 70),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(noneAtAll ? Icons.school_rounded : Icons.search_off_rounded, size: 56, color: AppTheme.primaryColor),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.55,
+          child: KaidaEmptyState(
+            kind: kind,
+            title: title,
+            message: sub,
+            primaryLabel: (noneAtAll && _tab != 2) ? 'Browse all courses' : null,
+            onPrimary: (noneAtAll && _tab != 2) ? go : null,
+            secondaryLabel: (noneAtAll && _tab != 2) ? 'Browse all categories' : null,
+            secondaryAsLink: true,
+            onSecondary: (noneAtAll && _tab != 2) ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())) : null,
           ),
         ),
-        const SizedBox(height: 20),
-        Center(child: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 19, fontWeight: FontWeight.w800))),
-        const SizedBox(height: 6),
-        Center(child: Text(sub, style: TextStyle(color: Colors.grey.shade500, fontSize: 14))),
-        const SizedBox(height: 24),
-        if (noneAtAll && _tab != 2 && _inProgress.isEmpty)
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                elevation: 0,
-              ),
-              onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout(initialIndex: 1)), (r) => false),
-              child: const Text('Explore Courses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-            ),
-          ),
       ],
     );
   }

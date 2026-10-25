@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
 import '../services/course_player_service.dart';
+import '../widgets/kaida_empty_state.dart';
 
 class CoursePlayerScreen extends StatefulWidget {
   final int courseId;
@@ -473,7 +474,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
     final textColor = isDark ? Colors.white : const Color(0xFF16123A);
     final surfaceColor = isDark ? AppTheme.darkSurfaceColor : Colors.white;
     if (_sections.isEmpty) {
-      return Padding(padding: const EdgeInsets.all(30), child: Center(child: Text('No lessons yet.', style: TextStyle(color: Colors.grey.shade500))));
+      return const SizedBox(height: 320, child: KaidaEmptyState(kind: KaidaEmptyKind.courses, title: 'No lessons yet', message: 'Lessons will appear here once the instructor adds them.'));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
