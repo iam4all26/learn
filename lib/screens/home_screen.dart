@@ -16,6 +16,9 @@ import 'categories_screen.dart';
 import 'instructor_profile_screen.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
+import '../utils/category_style.dart';
+import '../widgets/star_rating.dart';
+import 'daily_reward_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -52,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchCatalogData();
     _fetchWishlist();
     _fetchUnreadCount(); 
+    _fetchDailyReward();
     _syncFcmToken(); 
     _startBannerTimer();
   }
@@ -103,6 +107,70 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       // Silent
     }
+  }
+
+  // Daily reward prompt: shown only when today's reward can be claimed. Silent on any error.
+  bool _dailyClaimable = false;
+  double _dailyAmount = 0;
+  int _dailyStreak = 0;
+
+  Future<void> _fetchDailyReward() async {
+    try {
+      final r = await http.post(Uri.parse(ApiConfig.dailyRewardStatus));
+      final j = json.decode(r.body);
+      if (j['status'] == 'success' && mounted) {
+        final d = j['data'];
+        setState(() {
+          _dailyClaimable = d['enabled'] == true && d['claimed_today'] != true && d['pool_empty'] != true && (double.tryParse('${d['today_amount']}') ?? 0) > 0;
+          _dailyAmount = double.tryParse('${d['today_amount']}') ?? 0;
+          _dailyStreak = int.tryParse('${d['streak']}') ?? 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Widget _buildDailyRewardBanner(bool isDark) {
+    if (!_dailyClaimable) return const SizedBox.shrink();
+    final amt = _dailyAmount == _dailyAmount.roundToDouble() ? _dailyAmount.toStringAsFixed(0) : _dailyAmount.toStringAsFixed(2);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _fetchDailyReward()),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: const Color(0xFF3A22C4).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46, height: 46,
+                decoration: const BoxDecoration(color: Color(0xFFFFC21A), shape: BoxShape.circle),
+                child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Your daily reward is ready', style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 2),
+                    Text(_dailyStreak > 0 ? 'Day ${_dailyStreak + 1} of your streak: +$amt Kaida Points' : 'Claim +$amt Kaida Points today', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(20)),
+                child: const Text('Claim', style: TextStyle(color: Color(0xFF1E1E2D), fontWeight: FontWeight.w900, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchUnreadCount() async {
@@ -283,6 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await _fetchCatalogData();
             await _fetchWishlist();
             await _fetchUnreadCount(); 
+            await _fetchDailyReward();
             await _syncFcmToken(); 
           },
           child: SingleChildScrollView(
@@ -292,6 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHero(isDark),
+                _buildDailyRewardBanner(isDark),
                 _buildCategoryTiles(isDark),
                 _buildContinueLearning(isDark),
 
@@ -536,19 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEC4899), Color(0xFF06B6D4),
   ];
 
-  IconData _iconForCategory(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
-    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
-    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
-    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
-    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
-    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
-    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
-    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
-    if (n.contains('language') || n.contains('english') || n.contains('hausa')) return Icons.translate_rounded;
-    return Icons.category_rounded;
-  }
+  IconData _iconForCategory(String name) => CategoryStyle.iconFor(name);
 
   Widget _sectionHeader(String title, VoidCallback onSeeAll) {
     return Padding(
@@ -592,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (context, index) {
             final isMore = index == cats.length;
             final name = isMore ? 'More' : cats[index]['name'] as String;
-            final color = isMore ? Colors.grey.shade400 : _tileColors[index % _tileColors.length];
+            final color = isMore ? Colors.grey.shade400 : CategoryStyle.colorFor(name);
             return GestureDetector(
               onTap: () {
                 if (isMore) {
@@ -918,18 +976,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Icon(Icons.play_lesson_rounded, size: 14, color: Colors.grey.shade500),
                         const SizedBox(width: 4),
-                        Text(item.lessonCount > 0 ? '${item.lessonCount} Lessons' : 'Lessons soon', style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600)),
+                        Flexible(child: Text(item.lessonCount > 0 ? '${item.lessonCount}' : '', maxLines: 1, style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w700))),
                         const Spacer(),
-                        if (item.avgRating > 0) ...[
-                          const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB020)),
-                          const SizedBox(width: 2),
-                          Text(item.avgRating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                        ] else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                            child: const Text('New', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w800)),
-                          ),
+                        StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 13),
                       ],
                     ),
                   ],

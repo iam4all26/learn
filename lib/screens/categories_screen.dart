@@ -6,6 +6,7 @@ import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
 import 'catalog_screen.dart';
 import '../widgets/kaida_empty_state.dart';
+import '../utils/category_style.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({Key? key}) : super(key: key);
@@ -49,21 +50,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  IconData _getIconForCategory(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
-    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
-    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
-    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
-    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
-    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
-    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
-    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
-    if (n.contains('health')) return Icons.favorite_rounded;
-    if (n.contains('music') || n.contains('audio')) return Icons.music_note_rounded;
-    if (n.contains('language') || n.contains('english') || n.contains('hausa')) return Icons.translate_rounded;
-    return Icons.category_rounded;
-  }
+  IconData _getIconForCategory(String name) => CategoryStyle.iconFor(name);
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +83,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     final catName = (cat['name'] ?? 'Category').toString();
-                    final color = _tileColors[index % _tileColors.length];
+                    final color = CategoryStyle.colorFor(catName);
 
                     return GestureDetector(
                       onTap: () {

@@ -283,7 +283,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Widg
                             onPressed: _isLoading ? null : _verifyOTP,
                             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                             child: _isLoading
-                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                ? const KaidaButtonLoader(label: 'Verifying...')
                                 : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                                     Text('Verify Code', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
                                     SizedBox(width: 8),
@@ -357,7 +357,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> with Widg
               ],
             ),
           ),
-          if (_isLoading) Positioned.fill(child: Container(color: Colors.black26, child: const Center(child: KaidaLoader()))),
         ],
       ),
     );

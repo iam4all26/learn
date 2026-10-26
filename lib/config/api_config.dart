@@ -5,6 +5,8 @@ class ApiConfig {
   static const String registerNative = '$baseUrl/register_native.php';
   static const String verifyOtp = '$baseUrl/verify_otp.php';
   static const String resendOtp = '$baseUrl/resend_otp.php';
+  static const String dailyRewardStatus = '$baseUrl/daily_reward_status.php';
+  static const String dailyRewardClaim = '$baseUrl/daily_reward_claim.php';
   static const String myCourses = '$baseUrl/my_courses.php';
   static const String courseLessons = '$baseUrl/course_lessons.php';
   static const String saveProgress = '$baseUrl/save_progress.php';

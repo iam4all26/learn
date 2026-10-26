@@ -311,7 +311,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: busy
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? const KaidaSmallSpinner(size: 18, color: Colors.white)
                   : const Icon(Icons.download_rounded, size: 20, color: Colors.white),
             ),
           ),

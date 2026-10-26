@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,6 +14,7 @@ import '../config/theme_provider.dart';
 import '../widgets/kaida_loader.dart';
 import 'login_screen.dart';
 import 'catalog_screen.dart';
+import 'explore_screen.dart';
 import 'downloads_screen.dart';
 import 'security_screen.dart';
 import 'webview_screen.dart';
@@ -23,6 +23,7 @@ import 'edit_profile_screen.dart';
 import 'notifications_screen.dart';
 import 'help_center_screen.dart';
 import 'dashboard_screen.dart';
+import 'daily_reward_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -47,7 +48,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _shareUrl = "https://play.google.com/store/apps/details?id=com.kainuwa.academy";
   
   bool _isLoading = true;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -132,31 +132,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickAndUploadImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image == null || _userId == null) return;
-
-      setState(() => _isLoading = true);
-
-      var request = http.MultipartRequest('POST', Uri.parse(ApiConfig.uploadAvatar));
-      request.fields['user_id'] = _userId.toString();
-      request.files.add(await http.MultipartFile.fromPath('avatar', image.path));
-
-      var response = await request.send();
-      if (response.statusCode == 200) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Avatar updated successfully!'), backgroundColor: Colors.green));
-         _loadProfileData(); 
-      } else {
-         KaidaAlert.showModal(context: context, title: 'Update Failed', message: 'Failed to update avatar.', isError: true);
-         setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      KaidaAlert.showModal(context: context, title: 'Upload Error', message: 'An error occurred while uploading your avatar.', isError: true);
-      setState(() => _isLoading = false);
-    }
-  }
-
   void _shareApp() {
     Share.share("$_shareMessage \n\n$_shareUrl");
   }
@@ -216,17 +191,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.kainuwa.academy'), mode: LaunchMode.externalApplication);
       }
     } catch (e) {}
-  }
-
-  void _openSettings() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => _SettingsPage(
-          name: _name, username: _username, email: _email, avatarUrl: _avatarUrl,
-          onChangePhoto: _pickAndUploadImage,
-          onShare: _shareApp,
-          onRate: _rateApp,
-          onDelete: () => _openWebDashboard('Delete My Account', '/delete-account'),
-          onLogout: _handleLogout,
-        )));
   }
 
   String _roleLabel() {
@@ -447,6 +411,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _gridRow(List<Widget> cards) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: cards)),
+    );
+  }
+
   Widget _toolCard(IconData icon, Color color, String title, String sub, VoidCallback onTap, bool isDark) {
     return Expanded(
       child: GestureDetector(
@@ -556,16 +527,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               _themeToggle(isDark, themeProvider),
                               const Spacer(),
-                              _headerIcon(Icons.settings_rounded, _openSettings),
-                              const SizedBox(width: 8),
                               _headerIcon(Icons.notifications_none_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
+                              const SizedBox(width: 8),
+                              _headerIcon(Icons.logout_rounded, _handleLogout),
                             ],
                           ),
                           const SizedBox(height: 18),
                           Row(
                             children: [
                               GestureDetector(
-                                onTap: _pickAndUploadImage,
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())).then((_) => _loadProfileData()),
                                 child: Stack(
                                   clipBehavior: Clip.none,
                                   children: [
@@ -577,14 +548,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
                                         backgroundImage: _avatarUrl != null ? CachedNetworkImageProvider(_avatarUrl!) : null,
                                         child: _avatarUrl == null ? const Icon(Icons.person_rounded, size: 46, color: AppTheme.primaryColor) : null,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: -2, bottom: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(7),
-                                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6)]),
-                                        child: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 15),
                                       ),
                                     ),
                                   ],
@@ -627,7 +590,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Expanded(
                             flex: 11,
-                            child: Container(
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _loadProfileData()),
+                              child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7B5CFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
@@ -646,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text('KAIDA Points', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                                        const Text('KAIDA Points · Daily reward', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
                                         FittedBox(
                                           fit: BoxFit.scaleDown,
                                           alignment: Alignment.centerLeft,
@@ -657,6 +622,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ],
                               ),
+                            ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -759,202 +725,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // ---- Tools & services ----
               _sectionTitle('Tools & Services'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+              _gridRow([
+                _toolCard(Icons.storefront_rounded, const Color(0xFF22C55E), 'Kainuwa Shop', 'Products', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())), isDark),
+                _toolCard(Icons.menu_book_rounded, const Color(0xFF2F80ED), 'Explore Courses', 'Find a course', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))), isDark),
+                _toolCard(Icons.card_giftcard_rounded, const Color(0xFFF97316), 'Invite Friends', 'Share the app', _shareApp, isDark),
+              ]),
+
+              // ---- Account & support ----
+              _sectionTitle('Account & Support'),
+              _gridRow([
+                _toolCard(Icons.person_rounded, const Color(0xFF5B34F0), 'Edit Profile', 'Your details', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())).then((_) => _loadProfileData()), isDark),
+                _toolCard(Icons.lock_rounded, const Color(0xFF14B8A6), 'Change Password', 'Account safety', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen())), isDark),
+                _toolCard(Icons.help_outline_rounded, const Color(0xFFE5489B), 'Help Center', 'Answers', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen())), isDark),
+              ]),
+              const SizedBox(height: 10),
+              _gridRow([
+                _toolCard(Icons.star_rounded, const Color(0xFFFFB020), 'Rate Us', 'On Google Play', _rateApp, isDark),
+                const Expanded(child: SizedBox()),
+                const Expanded(child: SizedBox()),
+              ]),
+
+              // ---- Delete account (list row) ----
+              const SizedBox(height: 18),
+              GestureDetector(
+                onTap: () => _openWebDashboard('Delete My Account', '/delete-account'),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 26),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Delete My Account', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.red)),
+                            Text('Permanently remove your account', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 26),
+              Center(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _toolCard(Icons.storefront_rounded, const Color(0xFF22C55E), 'Kainuwa Shop', 'Products and templates', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'products', title: 'Shop Products'))), isDark),
-                    _toolCard(Icons.menu_book_rounded, const Color(0xFF2F80ED), 'Explore Courses', 'Find your next course', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))), isDark),
-                    _toolCard(Icons.card_giftcard_rounded, const Color(0xFFF97316), 'Invite Friends', 'Share the app', _shareApp, isDark),
+                    Image.asset('assets/kainuwa_academy_whitelogo.png', height: 30, fit: BoxFit.contain, color: const Color(0xFF5B34F0)),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Kainuwa Academy', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF5B34F0), fontSize: 13)),
+                        Text('Kainuwa Digital Africa Ltd', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500)),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// SETTINGS PAGE (opened from the gear icon)
-// =============================================================================
-class _SettingsPage extends StatelessWidget {
-  final String name, username, email;
-  final String? avatarUrl;
-  final VoidCallback onChangePhoto, onShare, onRate, onDelete, onLogout;
-
-  const _SettingsPage({
-    required this.name, required this.username, required this.email, required this.avatarUrl,
-    required this.onChangePhoto, required this.onShare, required this.onRate, required this.onDelete, required this.onLogout,
-  });
-
-  Widget _group(String title, List<Widget> rows, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 10), child: Text(title, style: const TextStyle(fontSize: 17.5, fontWeight: FontWeight.w900, letterSpacing: -0.2))),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-          ),
-          child: Column(
-            children: List.generate(rows.length, (i) => Column(children: [
-                  rows[i],
-                  if (i != rows.length - 1) Divider(height: 1, indent: 62, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                ])),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _row(IconData icon, String title, String sub, VoidCallback? onTap, {Widget? trailing, Color? color}) {
-    final c = color ?? AppTheme.primaryColor;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: c, size: 26),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: color)),
-                  Text(sub, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                ],
-              ),
-            ),
-            trailing ?? Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-
-    return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FD),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
-        title: Text('Settings', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: isDark ? Colors.white : Colors.black)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile information card
-            Padding(padding: const EdgeInsets.fromLTRB(20, 6, 20, 10), child: const Text('Profile Information', style: TextStyle(fontSize: 17.5, fontWeight: FontWeight.w900))),
-            GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: AppTheme.primaryColor.withOpacity(0.12),
-                      backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
-                      child: avatarUrl == null ? const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 34) : null,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900))),
-                            const SizedBox(width: 6),
-                            const Icon(Icons.edit_rounded, size: 15, color: AppTheme.primaryColor),
-                          ]),
-                          if (username.isNotEmpty) Text('@$username', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-                          Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-              ),
-              child: Column(children: [
-                _row(Icons.person_rounded, 'Edit Profile', 'Update your name and details', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()))),
-                Divider(height: 1, indent: 62, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                _row(Icons.photo_camera_rounded, 'Change Profile Photo', 'Pick a new picture', onChangePhoto),
-              ]),
-            ),
-
-            _group('App Preferences', [
-              _row(Icons.dark_mode_rounded, 'Dark Mode', 'Switch between light and dark', () => themeProvider.toggleTheme(!isDark),
-                  trailing: Switch(value: isDark, activeColor: AppTheme.primaryColor, onChanged: (v) => themeProvider.toggleTheme(v))),
-              _row(Icons.language_rounded, 'Language', 'App language', null, trailing: Text('English', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600))),
-              _row(Icons.notifications_rounded, 'Notifications', 'See your latest updates', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
-            ], isDark),
-
-            _group('Account & Security', [
-              _row(Icons.shield_rounded, 'Security', 'Password and account safety', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen()))),
-            ], isDark),
-
-            _group('Support & Community', [
-              _row(Icons.help_outline_rounded, 'Help Center', 'Answers and support', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen()))),
-              _row(Icons.share_rounded, 'Share App', 'Invite your friends', onShare),
-              _row(Icons.star_rounded, 'Rate Us', 'Rate the app on Google Play', onRate, color: null),
-            ], isDark),
-
-            _group('Data & Account', [
-              _row(Icons.delete_outline_rounded, 'Delete My Account', 'Permanently remove your account', onDelete, color: Colors.red),
-              _row(Icons.logout_rounded, 'Logout', 'Sign out of this device', onLogout, color: Colors.red),
-            ], isDark),
-
-            const SizedBox(height: 24),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset('assets/kainuwa_academy_whitelogo.png', height: 30, fit: BoxFit.contain, color: const Color(0xFF5B34F0)),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Kainuwa Academy', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF5B34F0), fontSize: 13)),
-                      Text('Kainuwa Digital Africa Ltd', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

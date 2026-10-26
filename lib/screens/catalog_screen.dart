@@ -10,6 +10,10 @@ import '../utils/kaida_alert.dart';
 import 'item_details_screen.dart';
 import '../widgets/kaida_empty_state.dart';
 import 'categories_screen.dart';
+import '../widgets/star_rating.dart';
+import '../utils/category_style.dart';
+import 'notifications_screen.dart';
+import 'profile_screen.dart';
 
 class CatalogItem {
   final int id;
@@ -28,6 +32,10 @@ class CatalogItem {
   final bool isOutOfStock; // CRITICAL FIX 2: Inventory Tracking
   final int lessonCount;
   final double avgRating;
+  final int categoryId;
+  final int sectionCount;
+  final int reviewCount;
+  final String shortDesc;
 
   CatalogItem({
     required this.id,
@@ -46,6 +54,10 @@ class CatalogItem {
     this.isOutOfStock = false,
     this.lessonCount = 0,
     this.avgRating = 0,
+    this.categoryId = 0,
+    this.sectionCount = 0,
+    this.reviewCount = 0,
+    this.shortDesc = '',
   });
 
   factory CatalogItem.fromJson(Map<String, dynamic> json, String itemType) {
@@ -84,6 +96,10 @@ class CatalogItem {
       isOutOfStock: outOfStock,
       lessonCount: int.tryParse(json['lesson_count']?.toString() ?? '') ?? 0,
       avgRating: double.tryParse(json['avg_rating']?.toString() ?? '') ?? 0,
+      categoryId: int.tryParse(json['category_id']?.toString() ?? '') ?? 0,
+      sectionCount: int.tryParse(json['section_count']?.toString() ?? '') ?? 0,
+      reviewCount: int.tryParse(json['review_count']?.toString() ?? '') ?? 0,
+      shortDesc: (json['short_desc'] ?? '').toString().replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'&[a-z]+;'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim(),
     );
   }
 }
@@ -105,7 +121,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   String _selectedCategory = 'All';
   String _selectedLevel = 'All';
-  String _chip = 'All'; // All | New | Top Rated | Free | On Sale
+  String _chip = 'All'; // All | Popular | New | Free | Sale
   String _selectedProductType = 'All'; 
   RangeValues _priceRange = const RangeValues(0, 100000);
 
@@ -225,11 +241,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
       if (!isProductMode) {
         if (_chip == 'New') {
           _filteredItems = _filteredItems.where((i) => !i.isComingSoon).take(12).toList();
-        } else if (_chip == 'Top Rated') {
+        } else if (_chip == 'Popular') {
           _filteredItems.sort((a, b) => b.avgRating.compareTo(a.avgRating));
         } else if (_chip == 'Free') {
           _filteredItems = _filteredItems.where((i) => i.isFree || (i.price == 0 && i.discountPrice == 0)).toList();
-        } else if (_chip == 'On Sale') {
+        } else if (_chip == 'Sale') {
           _filteredItems = _filteredItems.where((i) => i.discountPrice > 0 && i.discountPrice < i.price).toList();
         }
       }
@@ -494,18 +510,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEC4899), Color(0xFF06B6D4),
   ];
 
-  IconData _iconForCategory(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('web') || n.contains('cod') || n.contains('program') || n.contains('develop') || n.contains('tech')) return Icons.code_rounded;
-    if (n.contains('design') || n.contains('graphic') || n.contains('art') || n.contains('canva')) return Icons.palette_rounded;
-    if (n.contains('video') || n.contains('youtube') || n.contains('content') || n.contains('edit')) return Icons.play_circle_fill_rounded;
-    if (n.contains('crypto') || n.contains('block') || n.contains('forex') || n.contains('trad') || n.contains('financ')) return Icons.attach_money_rounded;
-    if (n.contains('market') || n.contains('social') || n.contains('seo') || n.contains('advert')) return Icons.campaign_rounded;
-    if (n.contains('business') || n.contains('entrepren') || n.contains('sales')) return Icons.business_center_rounded;
-    if (n.contains('ai') || n.contains('smart') || n.contains('phone') || n.contains('mobile')) return Icons.auto_awesome_rounded;
-    if (n.contains('photo') || n.contains('camera')) return Icons.photo_camera_rounded;
-    return Icons.category_rounded;
-  }
+  IconData _iconForCategory(String name) => CategoryStyle.iconFor(name);
 
   Widget _buildCourses(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -518,7 +523,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
     for (final i in _allItems) {
       if (i.categoryName.isNotEmpty && !catNames.contains(i.categoryName)) catNames.add(i.categoryName);
     }
-    final chips = ['All', 'New', 'Top Rated', 'Free', 'On Sale'];
+    final chips = ['All', 'Popular', 'New', 'Free', 'Sale'];
+    final sectioned = !isCategoryPage && _selectedCategory == 'All' && _chip == 'All' && _searchController.text.trim().isEmpty;
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackgroundColor : Colors.white,
@@ -536,7 +542,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7351FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!canPop) ...[
+                        Row(
+                          children: [
+                            Image.asset('assets/kainuwa_academy_whitelogo.png', height: 34, fit: BoxFit.contain),
+                            const SizedBox(width: 10),
+                            const Expanded(child: Text('Kainuwa Academy', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+                              child: Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle), child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20)),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                              child: Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), shape: BoxShape.circle), child: const Icon(Icons.person_rounded, color: Colors.white, size: 20)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      Row(
                     children: [
                       if (canPop) ...[
                         GestureDetector(
@@ -560,6 +588,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         ),
                       ),
                       const Icon(Icons.school_rounded, color: Colors.white24, size: 54),
+                    ],
+                  ),
                     ],
                   ),
                 ),
@@ -610,7 +640,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
           Expanded(
             child: _isLoading
-                ? const Center(child: KaidaLoader())
+                ? const KaidaSkeletonList(count: 5)
                 : RefreshIndicator(
                     color: AppTheme.primaryColor,
                     onRefresh: _fetchCatalog,
@@ -629,7 +659,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 itemBuilder: (context, index) {
                                   final isAll = index == 0;
                                   final name = isAll ? 'All' : catNames[index - 1];
-                                  final color = isAll ? AppTheme.primaryColor : _tileColors[(index - 1) % _tileColors.length];
+                                  final color = isAll ? AppTheme.primaryColor : CategoryStyle.colorFor(name);
                                   final selected = _selectedCategory == name;
                                   return GestureDetector(
                                     onTap: () { _selectedCategory = name; _filterResults(); },
@@ -693,26 +723,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         if (_filteredItems.isEmpty)
                           SliverFillRemaining(
                             hasScrollBody: false,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
-                                  const SizedBox(height: 16),
-                                  Text('No courses found', style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
+                            child: KaidaEmptyState(
+                              kind: KaidaEmptyKind.courses,
+                              primaryLabel: 'Browse all courses',
+                              onPrimary: () { _searchController.clear(); _selectedCategory = 'All'; _chip = 'All'; _filterResults(); },
+                              secondaryLabel: 'Browse all categories',
+                              secondaryAsLink: true,
+                              onSecondary: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
                             ),
                           )
+                        else if (sectioned)
+                          ..._buildSections(isDark)
                         else
                           SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 100),
+                            padding: const EdgeInsets.fromLTRB(12, 6, 12, 100),
                             sliver: SliverGrid(
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 14,
-                                mainAxisExtent: 282,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 12,
+                                mainAxisExtent: 206,
                               ),
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) => _buildCourseGridCard(_filteredItems[index], isDark),
@@ -729,18 +759,86 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  Widget _buildCourseGridCard(CatalogItem item, bool isDark) {
+  List<Widget> _buildSections(bool isDark) {
+    final Map<String, List<CatalogItem>> groups = {};
+    final Map<String, int> ids = {};
+    for (final i in _filteredItems) {
+      groups.putIfAbsent(i.categoryName, () => []).add(i);
+      if (i.categoryId > 0) ids[i.categoryName] = i.categoryId;
+    }
+    final List<Widget> out = [];
+    groups.forEach((name, list) {
+      final color = CategoryStyle.colorFor(name);
+      out.add(SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 12, 8),
+          child: Row(
+            children: [
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(11)),
+                child: Icon(CategoryStyle.iconFor(name), color: Colors.white, size: 19),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900))),
+              TextButton(
+                onPressed: () {
+                  final id = ids[name] ?? 0;
+                  if (id > 0) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(actionType: 'category_$id', title: name)));
+                  } else {
+                    _selectedCategory = name; _filterResults();
+                  }
+                },
+                child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                  Text('View more', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Icon(Icons.chevron_right_rounded, color: AppTheme.primaryColor, size: 18),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ));
+      out.add(SliverToBoxAdapter(
+        child: SizedBox(
+          height: 206,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            itemCount: list.length > 8 ? 8 : list.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => _buildCourseGridCard(list[i], isDark, width: 190),
+          ),
+        ),
+      ));
+    });
+    out.add(const SliverToBoxAdapter(child: SizedBox(height: 100)));
+    return out;
+  }
+
+  String _compact(int n) => n >= 1000 ? '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1)}K' : '$n';
+
+  Widget _buildCourseGridCard(CatalogItem item, bool isDark, {double? width}) {
     final isWishlisted = _wishlistedCourseIds.contains(item.id);
     final isFree = item.isFree || (item.price == 0 && item.discountPrice == 0);
     final hasDiscount = item.discountPrice > 0 && item.discountPrice < item.price;
+    final muted = Colors.grey.shade500;
+    const imgH = 88.0;
+
+    Widget meta(IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 12, color: AppTheme.primaryColor),
+          const SizedBox(width: 3),
+          Text(text, style: TextStyle(fontSize: 10.5, color: muted, fontWeight: FontWeight.w600)),
+        ]);
 
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ItemDetailsScreen(item: item))),
       child: Container(
+        width: width,
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkSurfaceColor : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.07), blurRadius: 12, offset: const Offset(0, 5))],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.07), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,36 +846,31 @@ class _CatalogScreenState extends State<CatalogScreen> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: item.thumbnailUrl.isNotEmpty
-                      ? CachedNetworkImage(imageUrl: item.thumbnailUrl, height: 112, width: double.infinity, fit: BoxFit.cover)
-                      : Container(height: 112, width: double.infinity, color: AppTheme.primaryColor.withOpacity(0.15), child: const Icon(Icons.school_rounded, size: 40, color: AppTheme.primaryColor)),
+                      ? CachedNetworkImage(imageUrl: item.thumbnailUrl, height: imgH, width: double.infinity, fit: BoxFit.cover)
+                      : Container(height: imgH, width: double.infinity, color: AppTheme.primaryColor.withOpacity(0.15), child: const Icon(Icons.school_rounded, size: 34, color: AppTheme.primaryColor)),
                 ),
                 if (item.isComingSoon)
-                  Container(height: 112, decoration: const BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.vertical(top: Radius.circular(18))), child: const Center(child: Icon(Icons.lock_clock_rounded, color: Colors.white, size: 30))),
-                // Tag chip (top-left)
-                Positioned(
-                  top: 8, left: 8,
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 96),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(10)),
-                    child: Text(
-                      item.isComingSoon ? 'Coming Soon' : (hasDiscount ? 'On Sale' : item.language),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF1E1E2D), fontSize: 10, fontWeight: FontWeight.w800),
+                  Container(height: imgH, decoration: const BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.vertical(top: Radius.circular(16))), child: const Center(child: Icon(Icons.lock_clock_rounded, color: Colors.white, size: 28))),
+                if (item.isComingSoon || hasDiscount)
+                  Positioned(
+                    bottom: 6, left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(10)),
+                      child: Text(item.isComingSoon ? 'Coming Soon' : 'Sale', style: const TextStyle(color: Color(0xFF1E1E2D), fontSize: 9.5, fontWeight: FontWeight.w800)),
                     ),
                   ),
-                ),
                 if (!item.isComingSoon)
                   Positioned(
                     top: 6, right: 6,
                     child: GestureDetector(
                       onTap: () => _toggleWishlist(item.id),
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(color: isDark ? Colors.black54 : Colors.white.withOpacity(0.92), shape: BoxShape.circle),
-                        child: Icon(isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: isWishlisted ? Colors.redAccent : Colors.grey.shade600, size: 17),
+                        child: Icon(isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: isWishlisted ? Colors.redAccent : AppTheme.primaryColor, size: 16),
                       ),
                     ),
                   ),
@@ -785,55 +878,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 5),
+                    Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, height: 1.2), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(item.shortDesc.isNotEmpty ? item.shortDesc : item.instructorName, style: TextStyle(color: muted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 7),
                     Row(
                       children: [
-                        Icon(Icons.person_rounded, size: 12, color: Colors.grey.shade500),
-                        const SizedBox(width: 4),
-                        Expanded(child: Text(item.instructorName, style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.play_lesson_rounded, size: 13, color: Colors.grey.shade500),
-                        const SizedBox(width: 3),
-                        Expanded(child: Text(item.lessonCount > 0 ? '${item.lessonCount} Lessons' : 'Lessons soon', style: TextStyle(color: Colors.grey.shade600, fontSize: 10.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        if (item.avgRating > 0) ...[
-                          const Icon(Icons.star_rounded, size: 15, color: Color(0xFFFFB020)),
-                          const SizedBox(width: 2),
-                          Text(item.avgRating.toStringAsFixed(1), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
-                        ] else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                            child: const Text('New', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10, fontWeight: FontWeight.w800)),
-                          ),
+                        meta(Icons.play_circle_outline_rounded, item.lessonCount > 0 ? '${item.lessonCount} Lessons' : 'Lessons soon'),
+                        if (item.sectionCount > 0) ...[
+                          const SizedBox(width: 8),
+                          Flexible(child: meta(Icons.article_outlined, '${item.sectionCount} Modules')),
+                        ],
                       ],
                     ),
                     const Spacer(),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: item.isComingSoon
-                          ? const Text('COMING SOON', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w800, fontSize: 12))
-                          : isFree
-                              ? const Text('FREE', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w900, fontSize: 15))
-                              : hasDiscount
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text('₦${item.price.toStringAsFixed(0)}', style: TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w600)),
-                                        const SizedBox(width: 5),
-                                        Text('₦${item.discountPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryColor)),
-                                      ],
-                                    )
-                                  : Text('₦${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryColor)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 12),
+                              if (item.reviewCount > 0)
+                                Text(' (${_compact(item.reviewCount)})', style: TextStyle(fontSize: 10, color: muted, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        item.isComingSoon
+                            ? const Text('SOON', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w800, fontSize: 11))
+                            : isFree
+                                ? const Text('FREE', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w900, fontSize: 14))
+                                : Text('₦${(hasDiscount ? item.discountPrice : item.price).toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryColor)),
+                      ],
                     ),
                   ],
                 ),

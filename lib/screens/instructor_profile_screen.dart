@@ -8,6 +8,7 @@ import '../widgets/kaida_loader.dart';
 import 'catalog_screen.dart';
 import 'item_details_screen.dart';
 import '../widgets/kaida_empty_state.dart';
+import '../widgets/star_rating.dart';
 
 class InstructorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> instructor;
@@ -346,11 +347,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen> {
                         Text('${item.lessonCount} lessons', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 10),
                       ],
-                      if (item.avgRating > 0) ...[
-                        const Icon(Icons.star_rounded, size: 15, color: Color(0xFFFFB020)),
-                        const SizedBox(width: 2),
-                        Text(item.avgRating.toStringAsFixed(1), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black87)),
-                      ],
+                      StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 13),
                     ],
                   ),
                   const SizedBox(height: 6),
