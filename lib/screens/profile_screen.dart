@@ -74,7 +74,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {}
   }
 
+  bool _dailyClaimable = false;
+
+  Future<void> _checkDaily() async {
+    try {
+      final r = await http.post(Uri.parse(ApiConfig.dailyRewardStatus));
+      final j = json.decode(r.body);
+      if (j['status'] == 'success' && mounted) {
+        final d = j['data'];
+        setState(() => _dailyClaimable = d['enabled'] == true && d['claimed_today'] != true && d['pool_empty'] != true);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadProfileData() async {
+    _checkDaily();
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getInt('user_id');
     
@@ -731,6 +745,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _toolCard(Icons.storefront_rounded, const Color(0xFF22C55E), 'Kainuwa Shop', 'Products', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())), isDark),
                 _toolCard(Icons.menu_book_rounded, const Color(0xFF2F80ED), 'Explore Courses', 'Find a course', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))), isDark),
                 _toolCard(Icons.card_giftcard_rounded, const Color(0xFFF97316), 'Invite Friends', 'Share the app', _shareApp, isDark),
+              ]),
+              const SizedBox(height: 10),
+              _gridRow([
+                _toolCard(Icons.local_fire_department_rounded, const Color(0xFFEF4444), 'Daily Reward', _dailyClaimable ? 'Claim now' : 'Your streak', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _checkDaily()), isDark),
+                const Expanded(child: SizedBox()),
+                const Expanded(child: SizedBox()),
               ]),
 
               // ---- Account & support ----

@@ -111,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Daily reward prompt: shown only when today's reward can be claimed. Silent on any error.
   bool _dailyClaimable = false;
+  bool _dailyClaimedToday = false;
   double _dailyAmount = 0;
   int _dailyStreak = 0;
 
@@ -122,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final d = j['data'];
         setState(() {
           _dailyClaimable = d['enabled'] == true && d['claimed_today'] != true && d['pool_empty'] != true && (double.tryParse('${d['today_amount']}') ?? 0) > 0;
+          _dailyClaimedToday = d['enabled'] == true && d['claimed_today'] == true;
           _dailyAmount = double.tryParse('${d['today_amount']}') ?? 0;
           _dailyStreak = int.tryParse('${d['streak']}') ?? 0;
         });
@@ -130,6 +132,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDailyRewardBanner(bool isDark) {
+    if (!_dailyClaimable && _dailyClaimedToday) {
+      // already claimed: a small streak chip that still opens the reward screen
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _fetchDailyReward()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(color: const Color(0xFFFFF1DC), borderRadius: BorderRadius.circular(22)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF97316), size: 19),
+                const SizedBox(width: 6),
+                Text('Day $_dailyStreak streak · Reward claimed', style: const TextStyle(color: Color(0xFF1E1E2D), fontWeight: FontWeight.w800, fontSize: 12.5)),
+                const Icon(Icons.chevron_right_rounded, color: Color(0xFF1E1E2D), size: 18),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
     if (!_dailyClaimable) return const SizedBox.shrink();
     final amt = _dailyAmount == _dailyAmount.roundToDouble() ? _dailyAmount.toStringAsFixed(0) : _dailyAmount.toStringAsFixed(2);
     return Padding(
@@ -362,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildHero(isDark),
                 _buildDailyRewardBanner(isDark),
-                if (_dailyClaimable) const SizedBox(height: 16),
+                if (_dailyClaimable || _dailyClaimedToday) const SizedBox(height: 16),
                 _buildCategoryTiles(isDark),
                 _buildContinueLearning(isDark),
 

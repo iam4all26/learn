@@ -19,8 +19,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     {
       'image': 'assets/images/onboarding_1.png',
       'black': 'Learn Digital Skills ',
-      'accent': 'in Hausa',
-      'subtitle': 'High-quality courses and practical skills you can learn on your phone, anywhere, anytime.',
+      'accent': 'in Hausa & English',
+      'subtitle': 'High-quality courses and practical skills in Hausa and English, on your phone, anywhere, anytime.',
     },
     {
       'image': 'assets/images/onboarding_2.png',
@@ -65,14 +65,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         img,
         fit: BoxFit.contain,
         alignment: Alignment.bottomCenter,
-        errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 120, color: Colors.white54),
+        errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 120, color: Color(0xFF6B47F5)),
       );
     }
     // Last page: drawn illustration
     return Stack(
       alignment: Alignment.center,
       children: [
-        Container(width: 230, height: 230, decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), shape: BoxShape.circle)),
+        Container(width: 230, height: 230, decoration: BoxDecoration(color: const Color(0xFF6B47F5).withOpacity(0.10), shape: BoxShape.circle)),
         const Icon(Icons.emoji_events_rounded, size: 120, color: Color(0xFFFFC21A)),
         Positioned(right: 40, top: 40, child: _chipIcon(Icons.trending_up_rounded, const Color(0xFF7B5CFF))),
         Positioned(left: 40, bottom: 60, child: _chipIcon(Icons.workspace_premium_rounded, const Color(0xFFFFC21A), dark: true)),
@@ -93,27 +93,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     final last = _currentPage == _pages.length - 1;
-    final sheetColor = isDark ? AppTheme.darkSurfaceColor : Colors.white;
+    final bg = isDark ? AppTheme.darkBackgroundColor : Colors.white;
+    final ink = isDark ? Colors.white : const Color(0xFF16123A);
+    const yellow = Color(0xFFFFC21A);
+    const imageBottom = 318.0; // space kept for the text and button
 
     return Scaffold(
-      backgroundColor: const Color(0xFF3A22C4),
+      backgroundColor: bg,
       body: Stack(
         children: [
-          // purple gradient background
-          Positioned.fill(
+          // soft purple light behind the picture; it fades out into the white page
+          Positioned(
+            left: 0, right: 0, top: 0, height: MediaQuery.of(context).size.height * 0.62,
             child: Container(
-              decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, 0.1),
+                  radius: 0.95,
+                  colors: [const Color(0xFF6B47F5).withOpacity(isDark ? 0.30 : 0.16), const Color(0xFFFFC21A).withOpacity(isDark ? 0.04 : 0.06), bg.withOpacity(0)],
+                  stops: const [0.0, 0.55, 1.0],
+                ),
+              ),
             ),
           ),
-          // hero images (swipe)
+          // hero images (swipe). The bottom of every picture fades into the page, so it never looks cut.
           Positioned(
-            left: 0, right: 0, top: topPad + 70, bottom: 330,
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _pages.length,
-              onPageChanged: (p) => setState(() => _currentPage = p),
-              itemBuilder: (_, i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: _hero(_pages[i])),
+            left: 0, right: 0, top: topPad + 64, bottom: imageBottom - 40,
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.68, 1.0],
+              ).createShader(rect),
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _pages.length,
+                onPageChanged: (p) => setState(() => _currentPage = p),
+                itemBuilder: (_, i) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _hero(_pages[i])),
+              ),
             ),
           ),
           // logo + skip
@@ -121,26 +142,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             left: 20, right: 20, top: topPad + 12,
             child: Row(
               children: [
-                Image.asset('assets/kainuwa_academy_whitelogo.png', height: 44, fit: BoxFit.contain),
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 42,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Text('Kainuwa Academy', style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 18)),
+                ),
                 const Spacer(),
                 if (!last)
                   GestureDetector(
                     onTap: _completeOnboarding,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('Skip', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                      decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.10), borderRadius: BorderRadius.circular(20)),
+                      child: const Text('Skip', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ),
               ],
             ),
           ),
-          // white bottom sheet
+          // text, dots and button, straight on the white page
           Positioned(
             left: 0, right: 0, bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(24, 28, 24, MediaQuery.of(context).padding.bottom + 22),
-              decoration: BoxDecoration(color: sheetColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(34))),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, bottomPad + 18),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -152,14 +177,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         RichText(
                           textAlign: TextAlign.center,
                           text: TextSpan(
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.5, color: isDark ? Colors.white : const Color(0xFF16123A)),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, height: 1.15, letterSpacing: -0.5, color: ink),
                             children: [
                               TextSpan(text: _pages[_currentPage]['black'] as String),
                               TextSpan(text: _pages[_currentPage]['accent'] as String, style: const TextStyle(color: AppTheme.primaryColor)),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         SizedBox(
                           height: 72,
                           child: Text(
@@ -171,7 +196,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
@@ -180,24 +205,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         duration: const Duration(milliseconds: 250),
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         height: 8,
-                        width: _currentPage == i ? 22 : 8,
-                        decoration: BoxDecoration(color: _currentPage == i ? AppTheme.primaryColor : (isDark ? Colors.grey.shade700 : Colors.grey.shade300), borderRadius: BorderRadius.circular(4)),
+                        width: _currentPage == i ? 24 : 8,
+                        decoration: BoxDecoration(color: _currentPage == i ? yellow : (isDark ? Colors.grey.shade700 : const Color(0xFFDCD6F7)), borderRadius: BorderRadius.circular(4)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _next,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: _next,
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF4C2FE0), Color(0xFF7B5CFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [BoxShadow(color: const Color(0xFF4C2FE0).withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 8))],
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(_currentPage == 0 || last ? 'Get Started' : 'Next', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 10),
+                          Container(width: 26, height: 26, decoration: const BoxDecoration(color: yellow, shape: BoxShape.circle), child: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF1E1E2D), size: 17)),
                         ],
                       ),
                     ),
