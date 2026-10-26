@@ -704,6 +704,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) { _checkDaily(); _loadProfileData(); }),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF3A22C4), Color(0xFF6B47F5)]),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: const Color(0xFF5B34F0).withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 4))],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48, height: 48,
+                          decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(14)),
+                          child: const Icon(Icons.card_giftcard_rounded, color: Color(0xFF3A22C4), size: 26),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Daily Reward', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 2),
+                              Text(_dailyClaimable ? 'Your reward is ready. Tap to claim' : 'See your streak and next reward',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12.5)),
+                            ],
+                          ),
+                        ),
+                        if (_dailyClaimable)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(20)),
+                            child: const Text('Claim', style: TextStyle(color: Color(0xFF3A22C4), fontWeight: FontWeight.w800, fontSize: 12.5)),
+                          )
+                        else
+                          const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
               _sectionTitle('What do you want to do?'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -745,12 +789,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _toolCard(Icons.storefront_rounded, const Color(0xFF22C55E), 'Kainuwa Shop', 'Products', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen())), isDark),
                 _toolCard(Icons.menu_book_rounded, const Color(0xFF2F80ED), 'Explore Courses', 'Find a course', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))), isDark),
                 _toolCard(Icons.card_giftcard_rounded, const Color(0xFFF97316), 'Invite Friends', 'Share the app', _shareApp, isDark),
-              ]),
-              const SizedBox(height: 10),
-              _gridRow([
-                _toolCard(Icons.local_fire_department_rounded, const Color(0xFFEF4444), 'Daily Reward', _dailyClaimable ? 'Claim now' : 'Your streak', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _checkDaily()), isDark),
-                const Expanded(child: SizedBox()),
-                const Expanded(child: SizedBox()),
               ]),
 
               // ---- Account & support ----

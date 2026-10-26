@@ -7,6 +7,7 @@ import '../screens/course_player_screen.dart';
 import '../screens/main_layout.dart';
 import '../screens/catalog_screen.dart'; 
 import '../screens/item_details_screen.dart'; 
+import '../screens/daily_reward_screen.dart';
 
 class FcmService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -91,14 +92,18 @@ class FcmService {
           navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => ItemDetailsScreen(item: dummyItem)));
         } else {
             // Failsafe: If crucial data is missing (e.g., slug), route to the notifications center
-            navigatorKey.currentState!.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 5)), (route) => false);
+            navigatorKey.currentState!.pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 3)), (route) => false);
         }
         break;
         
+      case 'open_daily_reward':
+        navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => const DailyRewardScreen()));
+        break;
+
       case 'open_dashboard':
         // Handle action to open the learner dashboard tab (index 3)
         navigatorKey.currentState!.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 5)),
+          MaterialPageRoute(builder: (context) => const MainLayout(initialIndex: 3)),
           (Route<dynamic> route) => false, 
         );
         break;
