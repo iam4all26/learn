@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_dailyClaimable) return const SizedBox.shrink();
     final amt = _dailyAmount == _dailyAmount.roundToDouble() ? _dailyAmount.toStringAsFixed(0) : _dailyAmount.toStringAsFixed(2);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
       child: GestureDetector(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen())).then((_) => _fetchDailyReward()),
         child: Container(
@@ -362,6 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildHero(isDark),
                 _buildDailyRewardBanner(isDark),
+                if (_dailyClaimable) const SizedBox(height: 16),
                 _buildCategoryTiles(isDark),
                 _buildContinueLearning(isDark),
 
@@ -970,7 +971,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(child: Text(item.instructorName, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  if (!isComingSoon && item.type == 'courses' && true) ...[
+                  if (!isComingSoon && !item.isComingSoon && item.type == 'courses') ...[
                     const SizedBox(height: 8),
                     Row(
                       children: [

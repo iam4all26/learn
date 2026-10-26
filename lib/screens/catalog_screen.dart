@@ -904,8 +904,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 12),
-                              if (item.reviewCount > 0)
+                              if (!item.isComingSoon) StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 12),
+                              if (item.reviewCount > 0 && !item.isComingSoon)
                                 Text(' (${_compact(item.reviewCount)})', style: TextStyle(fontSize: 10, color: muted, fontWeight: FontWeight.w600)),
                             ]),
                           ),

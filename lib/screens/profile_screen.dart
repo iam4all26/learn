@@ -529,6 +529,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const Spacer(),
                               _headerIcon(Icons.notifications_none_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
                               const SizedBox(width: 8),
+                              _headerIcon(Icons.settings_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())).then((_) => _loadProfileData())),
+                              const SizedBox(width: 8),
                               _headerIcon(Icons.logout_rounded, _handleLogout),
                             ],
                           ),
@@ -734,15 +736,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // ---- Account & support ----
               _sectionTitle('Account & Support'),
               _gridRow([
-                _toolCard(Icons.person_rounded, const Color(0xFF5B34F0), 'Edit Profile', 'Your details', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())).then((_) => _loadProfileData()), isDark),
                 _toolCard(Icons.lock_rounded, const Color(0xFF14B8A6), 'Change Password', 'Account safety', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen())), isDark),
                 _toolCard(Icons.help_outline_rounded, const Color(0xFFE5489B), 'Help Center', 'Answers', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen())), isDark),
-              ]),
-              const SizedBox(height: 10),
-              _gridRow([
                 _toolCard(Icons.star_rounded, const Color(0xFFFFB020), 'Rate Us', 'On Google Play', _rateApp, isDark),
-                const Expanded(child: SizedBox()),
-                const Expanded(child: SizedBox()),
               ]),
 
               // ---- Delete account (list row) ----

@@ -347,7 +347,7 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen> {
                         Text('${item.lessonCount} lessons', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 10),
                       ],
-                      StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 13),
+                      if (!item.isComingSoon) StarRating(rating: StarRating.resolve(item.avgRating, item.id), size: 13),
                     ],
                   ),
                   const SizedBox(height: 6),
