@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
@@ -26,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   List<dynamic> _myCourses = [];
   List<dynamic> _downloads = [];
+  List<dynamic> _downloadedCourses = [];   // courses with at least one lesson saved on this phone
   int _tab = 0; // 0 In Progress, 1 Completed, 2 Downloaded
   String _searchQuery = '';
   bool _showSearch = false;
@@ -49,6 +52,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _progress(dynamic c) => int.tryParse(c['progress_percentage']?.toString() ?? '0') ?? 0;
 
+  /// Courses that have lessons saved on this phone. Works fully offline: it reads the saved lesson list and
+  /// the saved files, no internet needed.
+  Future<void> _scanDownloadedCourses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('offline_downloads');
+      final Map<String, dynamic> saved = raw == null ? {} : Map<String, dynamic>.from(json.decode(raw));
+      final List<dynamic> found = [];
+      if (saved.isNotEmpty) {
+        for (final c in _myCourses) {
+          final cached = prefs.getString('course_curriculum_${c['id']}');
+          if (cached == null) continue;
+          dynamic data = json.decode(cached);
+          List sections = [];
+          if (data is List) sections = data;
+          else if (data is Map) sections = (data['sections'] ?? data['curriculum'] ?? data['data'] ?? []) as List;
+          int count = 0;
+          for (final s in sections) {
+            for (final l in (s['lessons'] ?? s['items'] ?? [])) {
+              final path = saved[l['id'].toString()];
+              if (path != null && File(path.toString()).existsSync()) count++;
+            }
+          }
+          if (count > 0) found.add({...Map<String, dynamic>.from(c), 'saved_lessons': count});
+        }
+      }
+      if (mounted) setState(() => _downloadedCourses = found);
+    } catch (_) {}
+  }
+
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
@@ -62,6 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       try {
         final data = json.decode(cached);
         if (mounted) setState(() { _myCourses = data; _isLoading = false; });
+        await _scanDownloadedCourses();
       } catch (_) {}
     }
 
@@ -81,13 +115,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('My Learning error: $e');
     }
     if (mounted) setState(() => _isLoading = false);
+    await _scanDownloadedCourses();
   }
 
   List<dynamic> get _inProgress => _myCourses.where((c) => _progress(c) < 100).toList();
   List<dynamic> get _completed => _myCourses.where((c) => _progress(c) >= 100).toList();
 
   List<dynamic> get _visible {
-    final base = _tab == 0 ? _inProgress : (_tab == 1 ? _completed : _downloads);
+    final base = _tab == 0 ? _inProgress : (_tab == 1 ? _completed : [..._downloadedCourses, ..._downloads]);
     if (_searchQuery.isEmpty) return base;
     final q = _searchQuery.toLowerCase();
     return base.where((c) => '${c['title'] ?? ''}'.toLowerCase().contains(q)).toList();
@@ -120,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labels = ['In Progress (${_inProgress.length})', 'Completed (${_completed.length})', 'Downloaded (${_downloads.length})'];
+    final labels = ['In Progress (${_inProgress.length})', 'Completed (${_completed.length})', 'Downloaded (${_downloadedCourses.length + _downloads.length})'];
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackgroundColor : const Color(0xFFF6F5FB),
@@ -173,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                             padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
                             itemCount: _visible.length,
-                            itemBuilder: (context, i) => _tab == 2 ? _downloadCard(_visible[i], isDark) : _courseCard(_visible[i], isDark),
+                            itemBuilder: (context, i) => (_tab == 2 && _visible[i]['saved_lessons'] == null) ? _downloadCard(_visible[i], isDark) : _courseCard(_visible[i], isDark),
                           ),
                   ),
           ),
@@ -245,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 92, height: 92,
                   color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                   child: thumb.isNotEmpty
-                      ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.play_circle_fill, color: AppTheme.primaryColor, size: 34))
+                      ? CachedNetworkImage(imageUrl: thumb, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.play_circle_fill, color: AppTheme.primaryColor, size: 34))
                       : const Icon(Icons.play_circle_fill, color: AppTheme.primaryColor, size: 34),
                 ),
               ),
@@ -260,7 +295,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        if (lessons > 0) ...[
+                        if (course['saved_lessons'] != null) ...[
+                          const Icon(Icons.download_done_rounded, size: 14, color: Color(0xFF22A06B)),
+                          const SizedBox(width: 4),
+                          Text('${course['saved_lessons']} saved offline', style: const TextStyle(fontSize: 11.5, color: Color(0xFF22A06B), fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 10),
+                        ] else if (lessons > 0) ...[
                           Icon(Icons.menu_book_rounded, size: 14, color: Colors.grey.shade500),
                           const SizedBox(width: 4),
                           Text('$lessons lessons', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),

@@ -29,6 +29,8 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
   
   List<dynamic> _sections = [];
   Map<String, dynamic>? _currentLesson;
+  String? _playError;
+  bool _offlineMode = false;
   
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
@@ -85,7 +87,20 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
         for (final l in _allLessons) {
           if ('${l['is_completed']}' == '1') _completed.add(l['id'].toString());
         }
-        if (_allLessons.isNotEmpty) _playLesson(_allLessons.first);
+        _offlineMode = _service.lastFromCache;
+        if (_allLessons.isNotEmpty) {
+          if (_offlineMode) {
+            // No internet: start with a lesson that is saved on this phone instead of one that needs the network
+            final saved = _allLessons.where((l) => _downloadedLessons.containsKey(l['id'].toString())).toList();
+            if (saved.isNotEmpty) {
+              _playLesson(saved.first);
+            } else {
+              setState(() => _playError = 'You are offline. Connect to the internet to watch this course, or download lessons while online.');
+            }
+          } else {
+            _playLesson(_allLessons.first);
+          }
+        }
       }
     } else {
       if (mounted) setState(() => _isLoading = false);
@@ -199,6 +214,7 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
     String type = lesson['content_type']?.toString() ?? lesson['lesson_type']?.toString() ?? 'video';
 
     setState(() {
+      _playError = null;
       _currentLesson = Map<String, dynamic>.from(lesson);
       if (_chewieController != null) {
         _chewieController!.dispose();
@@ -226,7 +242,19 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
           _videoController = VideoPlayerController.network(url);
         }
 
-        await _videoController!.initialize();
+        try {
+          await _videoController!.initialize();
+        } catch (e) {
+          // no internet and this lesson is not saved on the phone, or the file is damaged
+          _videoController?.dispose();
+          _videoController = null;
+          if (mounted) {
+            setState(() => _playError = _downloadedLessons.containsKey(id)
+                ? 'This downloaded lesson could not be opened. Delete it and download it again when you are online.'
+                : 'This lesson needs internet. Lessons you downloaded can be played offline.');
+          }
+          return;
+        }
 
         _chewieController = ChewieController(
           videoPlayerController: _videoController!,
@@ -609,6 +637,21 @@ class _CoursePlayerScreenState extends State<CoursePlayerScreen> {
     String type = _currentLesson!['content_type']?.toString() ?? _currentLesson!['lesson_type']?.toString() ?? 'video';
     String url = _currentLesson!['content']?.toString() ?? _currentLesson!['video_url']?.toString() ?? '';
     
+    if (_playError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, color: Colors.white70, size: 40),
+              const SizedBox(height: 10),
+              Text(_playError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.35)),
+            ],
+          ),
+        ),
+      );
+    }
     if (type == 'video') {
       if (_isYoutubeOrVimeo(url)) {
         return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('YouTube/Vimeo playback requires advanced plugins (Phase 2).', style: TextStyle(color: Colors.white70), textAlign: TextAlign.center)));
