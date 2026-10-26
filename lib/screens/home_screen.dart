@@ -19,6 +19,8 @@ import 'notifications_screen.dart';
 import '../utils/category_style.dart';
 import '../widgets/star_rating.dart';
 import 'daily_reward_screen.dart';
+import 'explore_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -419,9 +421,39 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
   // HERO: banner slider sits behind the header, greeting and search card
   // ---------------------------------------------------------------------------
+  // ---- Hero banner helpers: each banner has its own colours, text, button and a small right-side picture ----
+  Color _bannerColor(dynamic v, Color fallback) {
+    final t = (v ?? '').toString().trim().replaceAll('#', '');
+    if (t.length != 6) return fallback;
+    final n = int.tryParse(t, radix: 16);
+    return n == null ? fallback : Color(0xFF000000 | n);
+  }
+
+  Map<String, dynamic> get _activeBanner {
+    if (_banners.isEmpty) return {};
+    final i = _currentBannerIndex.clamp(0, _banners.length - 1);
+    final b = _banners[i];
+    return b is Map ? Map<String, dynamic>.from(b) : {};
+  }
+
+  void _openBannerTarget(String target) {
+    final t = target.trim();
+    if (t.isEmpty || t == '/courses') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses')));
+    } else if (t == '/daily-reward') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen()));
+    } else if (t == '/shop') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen()));
+    } else if (t.startsWith('https://')) {
+      launchUrl(Uri.parse(t), mode: LaunchMode.externalApplication);
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses')));
+    }
+  }
+
   Widget _buildHero(bool isDark) {
     final topPad = MediaQuery.of(context).padding.top;
-    final heroHeight = 300.0 + topPad;
+    final heroHeight = 330.0 + topPad;
     String safeAvatar = _userAvatar ?? '';
     if (safeAvatar.isNotEmpty && !safeAvatar.startsWith('http')) {
       safeAvatar = 'https://academy.kainuwa.africa/$safeAvatar';
@@ -453,10 +485,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPageChanged: (index) => setState(() => _currentBannerIndex = index),
                       itemCount: _banners.length,
                       itemBuilder: (context, index) {
-                        final url = (_banners[index]['image_url'] ?? '').toString();
-                        if (url.isEmpty) return const SizedBox();
-                        return CachedNetworkImage(imageUrl: url, fit: BoxFit.fitWidth, alignment: Alignment.bottomCenter, width: double.infinity, height: double.infinity,
-                            errorWidget: (c, u, e) => const SizedBox());
+                        final b = _banners[index] is Map ? _banners[index] as Map : {};
+                        final url = (b['image_url'] ?? '').toString();
+                        final c1 = _bannerColor(b['bg_color_start'], const Color(0xFF4C2FE0));
+                        final c2 = _bannerColor(b['bg_color_end'], const Color(0xFF7351FF));
+                        return Container(
+                          decoration: BoxDecoration(gradient: LinearGradient(colors: [c1, c2], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+                          // The small picture lives in a fixed slot on the right and is shrunk to fit it
+                          child: url.isEmpty
+                              ? null
+                              : Padding(
+                                  padding: EdgeInsets.only(top: topPad + 64, bottom: 72, right: 14),
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: SizedBox(
+                                      width: MediaQuery.of(context).size.width * 0.38,
+                                      child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain, alignment: Alignment.centerRight,
+                                          errorWidget: (c, u, e) => const SizedBox()),
+                                    ),
+                                  ),
+                                ),
+                        );
                       },
                     ),
                   // Soft overlays keep the header and greeting readable
@@ -468,10 +517,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           end: Alignment.bottomCenter,
                           stops: const [0.0, 0.35, 0.6, 1.0],
                           colors: [
-                            const Color(0xFF2A1580).withOpacity(0.85),
-                            const Color(0xFF2A1580).withOpacity(0.15),
+                            const Color(0xFF2A1580).withOpacity(0.35),
+                            const Color(0xFF2A1580).withOpacity(0.0),
+                            const Color(0xFF2A1580).withOpacity(0.0),
                             const Color(0xFF2A1580).withOpacity(0.25),
-                            const Color(0xFF2A1580).withOpacity(0.9),
                           ],
                         ),
                       ),
@@ -531,34 +580,63 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 3. Greeting + call-to-action
+          // 3. Greeting + username are ALWAYS visible; headline, line and button come from the banner
           Positioned(
-            left: 20, right: 20, bottom: 50,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_getGreeting().replaceAll(',', ''), style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(firstName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses'))),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                    decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(30)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Text('Start Learning', style: TextStyle(color: Color(0xFF1E1E2D), fontWeight: FontWeight.w800, fontSize: 14)),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF1E1E2D)),
+            left: 20, bottom: 50,
+            width: MediaQuery.of(context).size.width * 0.58,
+            child: Builder(builder: (context) {
+              final b = _activeBanner;
+              final headline = (b['headline'] ?? '').toString().trim();
+              final sub = (b['subtitle'] ?? '').toString().trim();
+              final btn = (b['button_text'] ?? '').toString().trim();
+              final label = btn.isNotEmpty ? btn : 'Start Learning';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_getGreeting().replaceAll(',', ''), style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(firstName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: Column(
+                      key: ValueKey('${_currentBannerIndex}_$headline$sub'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (headline.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(headline, maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800, height: 1.2)),
+                        ],
+                        if (sub.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.25)),
+                        ],
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => _openBannerTarget((b['target_url'] ?? '').toString()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                      decoration: BoxDecoration(color: const Color(0xFFFFC21A), borderRadius: BorderRadius.circular(30)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Color(0xFF1E1E2D), fontWeight: FontWeight.w800, fontSize: 14))),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF1E1E2D)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
 
           // 4. Slider dots
