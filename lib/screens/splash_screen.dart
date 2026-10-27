@@ -16,16 +16,21 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  // FIX: the version used to be typed here as "1.0.0", so EVERY installed copy of the app (even 3.0.2) thought it was
-  // 1.0.0 and showed "Update Required" as soon as latest_app_version on the server was higher than 1.0.0.
-  // Now the real installed version is read from the app itself (the "version:" line in pubspec.yaml).
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _progress;
   String _installedVersion = '';
 
   @override
   void initState() {
     super.initState();
+    _progress = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..forward();
     _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeApp() async {
@@ -45,7 +50,6 @@ class _SplashScreenState extends State<SplashScreen> {
           bool forceUpdate = data['data']['force_update'] == '1';
           String updateUrl = data['data']['share_url'] ?? "https://play.google.com/store/apps/details?id=com.kainuwa.academy";
 
-          // If the installed version could not be read, never block the user with an update message
           if (_installedVersion.isNotEmpty && _isUpdateRequired(_installedVersion, latestVersion)) {
             _showUpdateDialog(forceUpdate, updateUrl);
             return;
@@ -56,13 +60,10 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint("Splash settings fetch error: $e");
     }
     
-    // Add a slight artificial delay so the minimalist text stays on screen just long enough to be read
     await Future.delayed(const Duration(milliseconds: 1500));
     _routeUser();
   }
 
-  // True only when the server's latest version is HIGHER than the installed one.
-  // Works with "3.0.3", "3.1" and "4" (missing parts count as 0).
   bool _isUpdateRequired(String current, String latest) {
     try {
       List<int> parse(String v) {
@@ -134,19 +135,107 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: Center(
-        child: Text(
-          'Kainuwa Academy', 
-          style: TextStyle(
-            fontSize: 32, 
-            fontWeight: FontWeight.w900, 
-            color: Colors.white, 
-            letterSpacing: -0.5
-          )
-        ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF3A22C4),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF5B34F0), Color(0xFF3A22C4), Color(0xFF2A1580)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+            ),
+          ),
+          const CustomPaint(painter: _SplashBackdropPainter()),
+
+          // Logo, name, tagline and the loading bar
+          SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/kainuwa_academy_whitelogo.png',
+                    width: MediaQuery.of(context).size.width * 0.38,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/logo.png',
+                      width: MediaQuery.of(context).size.width * 0.3,
+                      errorBuilder: (_, __, ___) => const SizedBox(),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const Text('Kainuwa', style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900, height: 1.05, letterSpacing: -0.5)),
+                  const Text('Academy', style: TextStyle(color: Color(0xFFFFC21A), fontSize: 40, fontWeight: FontWeight.w900, height: 1.05, letterSpacing: -0.5)),
+                  const SizedBox(height: 14),
+                  Text('Learn Skills. Build Your Future.', style: TextStyle(color: Colors.white.withOpacity(0.92), fontSize: 15.5, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.36,
+                    child: AnimatedBuilder(
+                      animation: _progress,
+                      builder: (context, _) => ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: Curves.easeInOut.transform(_progress.value),
+                          minHeight: 6,
+                          backgroundColor: Colors.white.withOpacity(0.22),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFC21A)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// The soft circles and the yellow glow arcs behind the logo
+class _SplashBackdropPainter extends CustomPainter {
+  const _SplashBackdropPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+
+    // faint purple circles
+    canvas.drawCircle(Offset(w * 0.2, -h * 0.04), w * 0.85, Paint()..color = const Color(0xFF8B6BFF).withOpacity(0.16));
+    canvas.drawCircle(Offset(w * 1.12, h * 0.5), w * 0.6, Paint()..color = const Color(0xFF8B6BFF).withOpacity(0.14));
+
+    // yellow glow arc, top left
+    final glow = Paint()
+      ..color = const Color(0xFFFFC21A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+    final line = Paint()
+      ..color = const Color(0xFFFFE27A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    final topRect = Rect.fromCircle(center: Offset(-w * 0.1, -h * 0.17), radius: w * 0.62);
+    canvas.drawArc(topRect, 0.05, 1.0, false, glow);
+    canvas.drawArc(topRect, 0.05, 1.0, false, line);
+
+    // big yellow circle, bottom right
+    final bottomCenter = Offset(w * 1.02, h * 1.1);
+    final bottomRadius = w * 0.66;
+    canvas.drawCircle(
+      bottomCenter,
+      bottomRadius,
+      Paint()..shader = const LinearGradient(colors: [Color(0xFFFFE066), Color(0xFFFFB800)], begin: Alignment.topLeft, end: Alignment.bottomRight)
+          .createShader(Rect.fromCircle(center: bottomCenter, radius: bottomRadius)),
+    );
+    final bottomRect = Rect.fromCircle(center: bottomCenter, radius: bottomRadius + 6);
+    canvas.drawArc(bottomRect, 3.7, 0.9, false, glow);
+    canvas.drawArc(bottomRect, 3.7, 0.9, false, line);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
