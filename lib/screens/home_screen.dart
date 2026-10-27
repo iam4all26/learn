@@ -20,6 +20,7 @@ import '../utils/category_style.dart';
 import '../widgets/star_rating.dart';
 import 'daily_reward_screen.dart';
 import 'explore_screen.dart';
+import 'main_layout.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -442,6 +443,9 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen(actionType: 'courses', title: 'Explore Courses')));
     } else if (t == '/daily-reward') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyRewardScreen()));
+    } else if (t == '/ai' || t == '/wishlist' || t == '/profile') {
+      final idx = t == '/ai' ? 2 : (t == '/wishlist' ? 3 : 4);
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MainLayout(initialIndex: idx)), (route) => false);
     } else if (t == '/shop') {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const ExploreScreen()));
     } else if (t.startsWith('https://')) {
