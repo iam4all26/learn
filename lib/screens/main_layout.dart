@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 import 'home_screen.dart';
 import 'dashboard_screen.dart';
@@ -17,6 +18,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   late int _currentIndex;
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
@@ -48,7 +50,34 @@ class _MainLayoutState extends State<MainLayout> {
     final reserved = barHeight + 12 + bottomInset; // space the screens keep clear of the bar
     final aiSelected = _currentIndex == 2;
 
-    return Scaffold(
+    return WillPopScope(
+      // Back on another tab goes to Home first; on Home, press back twice to close the app
+      onWillPop: () async {
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return false;
+        }
+        // On Home: press back twice (within 2 seconds) to close the app
+        final now = DateTime.now();
+        if (_lastBackPress != null && now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+          SystemNavigator.pop();
+          return false;
+        }
+        _lastBackPress = now;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Press back again to exit', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700)),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.fromLTRB(60, 0, 60, reserved + 6),
+            backgroundColor: const Color(0xFF2A1580),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          ),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: scaffoldBgColor,
       body: Stack(
         clipBehavior: Clip.none,
@@ -126,6 +155,7 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ],
       ),
+    ),
     );
   }
 

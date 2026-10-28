@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_theme.dart';
 import 'login_screen.dart';
+import 'dart:io';
+import '../services/onboarding_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
@@ -42,6 +44,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadAdminSlides();
+  }
+
+  // Admin-set slides: use what is saved on the phone at once, then check the server quietly for changes.
+  // Empty text / empty picture = keep the built-in one for that slide.
+  Future<void> _loadAdminSlides() async {
+    _applySlides(await OnboardingService.loadSaved());
+    if (await OnboardingService.refresh()) {
+      _applySlides(await OnboardingService.loadSaved());
+    }
+  }
+
+  void _applySlides(List<Map<String, String>> slides) {
+    if (!mounted || slides.isEmpty) return;
+    setState(() {
+      for (int i = 0; i < slides.length && i < _pages.length; i++) {
+        final s = slides[i];
+        if ((s['black'] ?? '').isNotEmpty) _pages[i]['black'] = s['black'];
+        if ((s['accent'] ?? '').isNotEmpty) _pages[i]['accent'] = s['accent'];
+        if ((s['subtitle'] ?? '').isNotEmpty) _pages[i]['subtitle'] = s['subtitle'];
+        _pages[i]['file'] = (s['file'] ?? '').isNotEmpty ? s['file'] : null;
+      }
+    });
+  }
+
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('first_time_user', false);
@@ -59,6 +89,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _hero(Map<String, dynamic> page) {
+    final localFile = page['file'] as String?;
+    if (localFile != null && localFile.isNotEmpty) {
+      return Image.file(
+        File(localFile),
+        fit: BoxFit.contain,
+        alignment: Alignment.bottomCenter,
+        errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded, size: 120, color: Color(0xFF6B47F5)),
+      );
+    }
     final img = page['image'] as String?;
     if (img != null) {
       return Image.asset(

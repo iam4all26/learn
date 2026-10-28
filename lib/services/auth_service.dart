@@ -108,7 +108,14 @@ class AuthService {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 'success') { _pendingGoogleIdToken = null; }
+        if (data['status'] == 'success') {
+          _pendingGoogleIdToken = null;
+          // Google sign-ups come back already signed in (no password)
+          if (data['token'] != null && data['user_id'] != null) {
+            await _saveUserData(data['token'].toString(), int.parse(data['user_id'].toString()));
+            return {'success': true, 'message': data['message'] ?? 'OK', 'logged_in': true};
+          }
+        }
         return {'success': data['status'] == 'success', 'message': data['message'] ?? 'Error'};
       }
       if (response.statusCode == 429) {

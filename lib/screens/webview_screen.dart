@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config/app_theme.dart';
 import '../widgets/kaida_loader.dart';
@@ -39,6 +40,35 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
+    _enableFileUploads();
+  }
+
+  // Lets the website's "choose a file / photo" buttons work inside the app (they did nothing before).
+  // The Android WebView needs the app to open the file chooser itself.
+  void _enableFileUploads() {
+    try {
+      final dynamic platform = _controller.platform;
+      platform.setOnShowFileSelector(_pickFilesForWeb);
+    } catch (_) {
+      // not an Android WebView: nothing to do
+    }
+  }
+
+  Future<List<String>> _pickFilesForWeb(dynamic params) async {
+    try {
+      final List<String> types = List<String>.from(params.acceptTypes as List).map((t) => t.trim().toLowerCase()).where((t) => t.isNotEmpty).toList();
+      final bool imagesOnly = types.isNotEmpty && types.every((t) => t.startsWith('image/') || t == '.jpg' || t == '.jpeg' || t == '.png' || t == '.webp');
+      final bool videosOnly = types.isNotEmpty && types.every((t) => t.startsWith('video/'));
+      final bool multiple = params.mode.toString().contains('openMultiple');
+      final result = await FilePicker.platform.pickFiles(
+        type: imagesOnly ? FileType.image : (videosOnly ? FileType.video : FileType.any),
+        allowMultiple: multiple,
+      );
+      if (result == null) return <String>[];
+      return result.paths.whereType<String>().map((p) => Uri.file(p).toString()).toList();
+    } catch (_) {
+      return <String>[];
+    }
   }
 
   // Only the site name is shown. The full address can hold a one-time sign-in code, so it is never displayed.

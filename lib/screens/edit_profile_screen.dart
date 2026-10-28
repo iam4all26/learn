@@ -53,7 +53,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _bioController.addListener(() => setState(() {}));
-    _fetchProfileData();
+    _fetchProfileData().then((_) => _recoverLostPhoto());
   }
 
   @override
@@ -164,10 +164,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
+  // On phones with little memory Android can close the app while the gallery or camera is open.
+  // When the app starts again the picked photo is recovered here instead of being lost.
+  Future<void> _recoverLostPhoto() async {
+    try {
+      final LostDataResponse lost = await _picker.retrieveLostData();
+      if (lost.isEmpty || lost.file == null) return;
+      await _uploadPhoto(lost.file!);
+    } catch (_) {}
+  }
+
   Future<void> _pickPhoto(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 85);
-      if (image == null || _userId == null) return;
+      if (image == null) return;
+      await _uploadPhoto(image);
+    } catch (e) {
+      _snack('Could not open your photos. Please allow photo access for Kainuwa Academy in your phone settings and try again.', error: true);
+    }
+  }
+
+  Future<void> _uploadPhoto(XFile image) async {
+    try {
+      if (_userId == null) return;
       if (await image.length() > 2 * 1024 * 1024) {
         _snack('Image is larger than 2MB. Please choose a smaller one.', error: true);
         return;
@@ -473,17 +492,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
 
                   _card(isDark, Icons.person_rounded, 'Personal Information', 'These details show on your profile.', [
-                    _pair(
-                      _field(isDark, 'Full Name', Icons.person_outline_rounded, _fullNameController, required: true),
-                      _field(isDark, 'Username', Icons.alternate_email_rounded, _usernameController, required: true, onChanged: _onUsernameChanged, suffix: unameStatus),
-                    ),
+                    _field(isDark, 'Full Name', Icons.person_outline_rounded, _fullNameController, required: true),
+                    const SizedBox(height: 12),
+                    _field(isDark, 'Username', Icons.alternate_email_rounded, _usernameController, required: true, onChanged: _onUsernameChanged, suffix: unameStatus),
                     if (_isUsernameAvailable == false)
                       const Padding(padding: EdgeInsets.only(top: 4), child: Text('Username is already taken', style: TextStyle(color: Colors.red, fontSize: 11.5, fontWeight: FontWeight.w700))),
                     const SizedBox(height: 12),
-                    _pair(
-                      _field(isDark, 'Email Address', Icons.mail_outline_rounded, _emailController, readOnly: true),
-                      _field(isDark, 'Phone Number', Icons.phone_outlined, _phoneController, type: TextInputType.phone, formatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]')), LengthLimitingTextInputFormatter(20)]),
-                    ),
+                    _field(isDark, 'Email Address', Icons.mail_outline_rounded, _emailController, readOnly: true),
+                    const SizedBox(height: 12),
+                    _field(isDark, 'Phone Number', Icons.phone_outlined, _phoneController, type: TextInputType.phone, formatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]')), LengthLimitingTextInputFormatter(20)]),
                     const SizedBox(height: 12),
                     _pair(
                       _select(isDark, 'Language', Icons.translate_rounded, _language == 'ha' ? 'Hausa' : 'English', 'Select', () => _openSheet('Language', _languages, (id, n) => setState(() => _language = id)), required: true),

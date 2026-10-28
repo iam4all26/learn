@@ -138,7 +138,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _handleRegister() async {
     FocusScope.of(context).unfocus();
-    if (_fullNameController.text.isEmpty || _usernameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_fullNameController.text.isEmpty || _usernameController.text.isEmpty || _emailController.text.isEmpty || (widget.prefillEmail == null && _passwordController.text.isEmpty)) {
       KaidaAlert.showModal(context: context, title: 'Action Required', message: 'Please fill all required fields.', isError: true);
       return;
     }
@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       KaidaAlert.showModal(context: context, title: 'Location Required', message: 'Please select your Country, State, and City.', isError: true);
       return;
     }
-    if (_passwordsMatch == false) {
+    if (widget.prefillEmail == null && _passwordsMatch == false) {
       KaidaAlert.showModal(context: context, title: 'Password Mismatch', message: 'Your passwords do not match. Please try again.', isError: true);
       return;
     }
@@ -168,7 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'country_id': _selectedCountryId ?? '',
       'state_id': _selectedStateId ?? '',
       'city_id': _selectedCityId ?? '',
-      'password': _passwordController.text,
+      'password': widget.prefillEmail != null ? '' : _passwordController.text,
       'auth_provider': widget.prefillEmail != null ? 'google' : 'email',
     };
 
@@ -178,7 +178,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       if (widget.prefillEmail != null) {
         // Bypass OTP, Login Directly, Go to Dashboard
-        await _authService.login(_emailController.text.trim(), _passwordController.text);
+        // The server already signed this Google user in (token saved by AuthService.register)
+        if (result['logged_in'] != true) {
+          if (mounted) setState(() => _isLoading = false);
+          if (!mounted) return;
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+          return;
+        }
         if (mounted) setState(() => _isLoading = false);
         if (!mounted) return;
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainLayout()));
@@ -309,9 +315,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 12),
           AuthSelectRow(icon: Icons.location_city_rounded, label: 'City', value: _selectedCityName, placeholder: 'Select city', disabled: _cities.isEmpty, onTap: () => _openSelectionSheet(title: 'City', items: _cities, onSelect: (id, name) => setState(() { _selectedCityId = id; _selectedCityName = name; }))),
           const SizedBox(height: 12),
+          if (!isGoogle) ...[
           AuthField(icon: Icons.lock_outline_rounded, label: 'Password', hint: 'Create a password', controller: _passwordController, isPassword: true, obscure: _obscurePassword, onChanged: (v) => _onPasswordChanged(), onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword)),
           const SizedBox(height: 12),
           AuthField(icon: Icons.lock_reset_rounded, label: 'Confirm Password', hint: 'Repeat your password', controller: _confirmPasswordController, isPassword: true, obscure: _obscureConfirmPassword, onChanged: (v) => _onPasswordChanged(), onToggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword), status: passwordStatus),
+          ],
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

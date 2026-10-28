@@ -24,6 +24,7 @@ import 'notifications_screen.dart';
 import 'help_center_screen.dart';
 import 'dashboard_screen.dart';
 import 'daily_reward_screen.dart';
+import '../utils/kaida_busy.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -146,13 +147,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _shareApp() {
-    Share.share("$_shareMessage \n\n$_shareUrl");
+  Future<void> _shareApp() async {
+    if (KaidaBusy.isBusy) return;
+    await KaidaBusy.withLoader(context, () => Share.share("$_shareMessage \n\n$_shareUrl"), message: 'Opening share...');
   }
 
   // Opens a page of the website in the app already signed in (secure one-time link from the server)
   Future<void> _openWebDashboard(String title, String path) async {
-    final url = await ApiClient.webviewUrl(path);
+    if (KaidaBusy.isBusy) return;   // a page is already opening: ignore extra taps
+    final url = await KaidaBusy.withLoader(context, () => ApiClient.webviewUrl(path), message: 'Opening $title...');
     if (!mounted) return;
     if (url == null) {
       KaidaAlert.showModal(context: context, title: 'Could not open', message: 'We could not open this page right now. Please check your internet and try again.', isError: true);
