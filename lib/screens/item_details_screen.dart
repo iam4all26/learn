@@ -1,3 +1,4 @@
+import '../utils/kaida_busy.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -214,7 +215,8 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> with SingleTicker
           : '/enroll.php?course_id=${widget.item.id}';
           
       // Secure one-time sign-in link from the server
-      final String? authBridgeUrl = await ApiClient.webviewUrl(targetPath);
+      if (KaidaBusy.isBusy) return;   // already opening: ignore extra taps
+      final String? authBridgeUrl = await KaidaBusy.withLoader(context, () => ApiClient.webviewUrl(targetPath), message: isProduct ? 'Opening checkout...' : 'Opening enrollment...');
       if (!mounted) return;
       if (authBridgeUrl == null) {
         KaidaAlert.showModal(context: context, title: 'Could not open', message: 'We could not open the checkout right now. Please check your internet and try again.', isError: true);
