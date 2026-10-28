@@ -216,7 +216,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> with SingleTicker
           
       // Secure one-time sign-in link from the server
       if (KaidaBusy.isBusy) return;   // already opening: ignore extra taps
-      final String? authBridgeUrl = await KaidaBusy.withLoader(context, () => ApiClient.webviewUrl(targetPath), message: isProduct ? 'Opening checkout...' : 'Opening enrollment...');
+      final String? authBridgeUrl = await KaidaBusy.withLoader<String?>(context, () => ApiClient.webviewUrl(targetPath), message: isProduct ? 'Opening checkout...' : 'Opening enrollment...');
       if (!mounted) return;
       if (authBridgeUrl == null) {
         KaidaAlert.showModal(context: context, title: 'Could not open', message: 'We could not open the checkout right now. Please check your internet and try again.', isError: true);
